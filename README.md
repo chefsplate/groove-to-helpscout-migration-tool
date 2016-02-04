@@ -38,3 +38,5 @@ Please be aware of the following when importing:
 - Groove only supports a single email address field (we will do our best to parse multiple email addresses)
 - Groove mainly supports Twitter and LinkedIn as social media platforms
 - Groove doesn't have chat accounts out-of-the-box
+
+For help moving from Zendesk, Desk or UserVoice, check out the [HelpScout knowledge base](http://docs.helpscout.net/category/74-copying-email-to-help-scout).
