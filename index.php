@@ -49,8 +49,7 @@ function makeRateLimitedRequest($requestFunction, $processFunction = null, $rate
         /** @var callable $processFunction */
         addToQueue($processFunction($response));
     } else {
-        // assume we get back a list of items
-        addToQueue($response);
+        // don't do anything
     }
     return $response;
 }
@@ -73,7 +72,7 @@ do {
     echo "Retrieved " . count($response) . " tickets from page " . $page_number . " <br>";
     $page_number++;
 } while (count($response) > 0 && $page_number <= $DEBUG_LIMIT);
-echo "Tickets acquired."
+echo "Tickets retrieved."
 */
 
 // Fetch all customers
@@ -104,7 +103,8 @@ do {
                     }
 
                     $customer->setOrganization($groove_customer['company_name']);
-                    $customer->setJobTitle($groove_customer['title']);
+                    // Job title must be 60 characters or less
+                    $customer->setJobTitle(substr($groove_customer['title'], 0, 60));
                     $customer->setLocation($groove_customer['location']);
                     $customer->setBackground($groove_customer['about']);
 
@@ -164,7 +164,7 @@ do {
     $number_customers += count($response);
     $page_number++;
 } while (count($response) > 0 && $page_number <= $DEBUG_LIMIT);
-echo "$number_customers customers acquired.";
+echo "$number_customers customers retrieved.";
 
 // -------
 // Process
@@ -197,30 +197,39 @@ $requests_processed_this_minute = 0;
 $start_of_minute_timestamp = time();
 
 // Create customers
+$client = null;
 try {
     $client = ApiClient::getInstance();
     $client->setKey(HELPSCOUT_API_KEY);
-
-    foreach ($uploadQueue as $model) {
-        if (strcasecmp(get_class($model), "Customer") === 0) {
-            $client->createCustomer($model);
-        }
-    }
 } catch (HelpScout\ApiException $e) {
+    // TODO: standardize error messaging interface
+    echo "Error creating client";
     echo $e->getMessage();
     print_r($e->getErrors());
+    exit();
 }
 
-exit();
+$error_mapping = array();
 
-
-function processPublishJobQueue() {
-    global $uploadQueue;
-    foreach ($uploadQueue as $job) {
-        $job->publish();
+foreach ($uploadQueue as $model) {
+    try {
+        $classname = explode('\\', get_class($model));
+        if (strcasecmp(end($classname), "Customer") === 0) {
+            $response = makeRateLimitedRequest(function () use ($client, $model) {
+                $client->createCustomer($model);
+            }, null, HELPSCOUT_REQUESTS_PER_MINUTE);
+        }
+    } catch (HelpScout\ApiException $e) {
+        echo $e->getMessage();
+        print_r($e->getErrors());
+        echo "<br>";
+        foreach ($e->getErrors() as $error) {
+            $error_mapping[$error['message']] []= $error;
+        }
     }
 }
 
+var_dump($error_mapping);
 
 // Task breakdown
 // TODO: create queue of jobs to update so we don't spam the HelpScout connection
