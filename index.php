@@ -118,11 +118,49 @@ do {
                     }
 
                     // Emails: at least one email is required
-                    $emailHome = new \HelpScout\model\customer\EmailEntry();
-                    $emailHome->setValue($groove_customer['email']);
-                    $emailHome->setLocation("home");
+                    // Groove only supports one email address, which means the email field could contain multiple emails
+                    $email_addresses = array();
+                    $split_emails = preg_split("/( |;|,)/", $groove_customer['email']);
+                    // test to make sure all email addresses are valid
+                    if (sizeof($split_emails) == 1) {
+                        $email_entry = new \HelpScout\model\customer\EmailEntry();
+                        $email_entry->setValue($groove_customer['email']);
+                        $email_entry->setLocation("primary");
 
-                    $customer->setEmails(array($emailHome));
+                        array_push($email_addresses, $email_entry);
+                    } else {
+                        // Test to make sure every email address is valid
+                        $first = true;
+                        foreach ($split_emails as $address_to_test) {
+                            if (strlen(trim($address_to_test)) === 0) {
+                                continue;
+                            }
+                            if (!filter_var($address_to_test, FILTER_VALIDATE_EMAIL)) {
+                                // breaking up the address resulted in invalid emails; use the original address
+                                $email_addresses = array();
+                                $email_entry = new \HelpScout\model\customer\EmailEntry();
+                                $email_entry->setValue($groove_customer['email']);
+                                $email_entry->setLocation("primary");
+
+                                array_push($email_addresses, $email_entry);
+
+                                break;
+                            } else {
+                                $email_entry = new \HelpScout\model\customer\EmailEntry();
+                                $email_entry->setValue($address_to_test);
+
+                                if ($first) {
+                                    $email_entry->setLocation("primary");
+                                    $first = false;
+                                } else {
+                                    $email_entry->setLocation("other");
+                                }
+
+                                array_push($email_addresses, $email_entry);
+                            }
+                        }
+                    }
+                    $customer->setEmails($email_addresses);
 
                     // Social Profiles (Groove supports Twitter and LinkedIn)
                     $social_profiles = array();
@@ -235,6 +273,8 @@ var_dump($error_mapping);
 // TODO: create queue of jobs to update so we don't spam the HelpScout connection
 // TODO: determine rate limiting for API and batch jobs according to that ratio
 // TODO: execute batches
+
+// TODO: unit tests for email validation; that the correct customer/models were created
 
 // Nice-to-haves
 // TODO: generate progress updater

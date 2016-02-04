@@ -35,5 +35,6 @@ sense. If the email is invalid, you will likely need to manually create these us
 Please be aware of the following when importing:
 - Groove stores full names of customers instead of first and last name
 - Groove does not maintain customer addresses
+- Groove only supports a single email address field (we will do our best to parse multiple email addresses)
 - Groove mainly supports Twitter and LinkedIn as social media platforms
 - Groove doesn't have chat accounts out-of-the-box
