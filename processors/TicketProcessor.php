@@ -6,7 +6,7 @@
  * Date: 2016-02-04
  * Time: 1:29 PM
  */
-class CustomerProcessor implements ProcessorInterface
+class TicketProcessor implements ProcessorInterface
 {
     /**
      * @return Closure
