@@ -1,5 +1,6 @@
 # groove-to-helpscout-migration-tool
-ETL project to migrate from GrooveHQ to HelpScout via APIs.
+
+**Work-in-progress**. ETL project to migrate from GrooveHQ to HelpScout via APIs.
 
 This ETL tool uses the Acquire -> Process -> Publish sequence of phases as suggested by http://www.seabourneinc.com/rethinking-etl-for-the-api-age/
 
@@ -23,7 +24,14 @@ In the same folder, run:
 
 Navigate to http://localhost:8001/index.php in your browser.
 
+### Within HelpScout
+
+Create all of your agent (team, user & mailbox) accounts in HelpScout first. Our tool will need to map the Groove agent 
+email addresses with HelpScout user emails and Groove mailboxes to HelpScout mailboxes (manual input may be required).
+
 ## Notes
+
+This tool is compatible with V1 of both Groove and HelpScout APIs.
 
 As with all content management systems: Garbage in, garbage out.
 
@@ -38,10 +46,13 @@ Please be aware of the following when importing:
 - Groove only supports a single email address field (we will do our best to parse multiple email addresses)
 - Groove mainly supports Twitter and LinkedIn as social media platforms
 - Groove doesn't have chat accounts out-of-the-box
-- HelpScout API does not support creation of team members; team members will have to be manually created
+- HelpScout API does not support creation of team members (agents); team members and mailboxes will have to be manually created
+- HelpScout API doesn't appear to have any concept of priorities for conversations/threads
 
 For help moving from Zendesk, Desk or UserVoice, check out the [HelpScout knowledge base](http://docs.helpscout.net/category/74-copying-email-to-help-scout).
 
 ## TODOs
 
-- Migration of images
+The tool currently does not perform:
+
+- Migration of attachments and images
