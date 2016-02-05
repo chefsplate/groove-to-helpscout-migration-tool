@@ -5,20 +5,6 @@
   "keywords": ["api", "etl", "helpscout", "groove"],
   "homepage": "https://github.com/chefsplate/groove-to-helpscout-migration-tool",
   "license": "MIT",
-  "repositories": [
-    {
-      "type": "package",
-      "package": {
-        "name": "jadb/groovehq",
-        "version": "dev-master",
-        "source": {
-          "url": "git@github.com:chefsplate/php-groovehq.git",
-          "type": "git",
-          "reference": "origin/master"
-        }
-      }
-    }
-  ],
   "require": {
     "php": ">=5.3.2",
     "helpscout/api": ">=1.7",
@@ -29,9 +15,6 @@
     "codeclimate/php-test-reporter": "dev-master"
   },
   "autoload": {
-    "psr-4": {
-      "GrooveHQ\\": "vendor/jadb/groovehq/src/"
-    }
   },
   "autoload-dev": {
   },
