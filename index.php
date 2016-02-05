@@ -24,9 +24,9 @@ $requests_processed_this_minute = 0;
 $start_of_minute_timestamp = time();
 $uploadQueue = array();
 
-// -------
-// Acquire
-// -------
+// ---------------------
+// Acquire (and process)
+// ---------------------
 
 // TODO: Move acquisition to its own module
 $gh = new \GrooveHQ\Client(GROOVEHQ_API_KEY);
@@ -35,6 +35,8 @@ $agents_service = $gh->agents();
 $customers_service = $gh->customers();
 $messages_service = $gh->messages();
 $tickets_service = $gh->tickets();
+$mailboxes_service = $gh->mailboxes();
+$groups_service = $gh->groups();
 
 function makeRateLimitedRequest($requestFunction, $processFunction = null, $rate_limit) {
     global $requests_processed_this_minute, $start_of_minute_timestamp;
@@ -67,8 +69,6 @@ function addToQueue($jobs_list) {
     $uploadQueue = array_merge($uploadQueue, $jobs_list);
 }
 
-var_dump($tickets_service->count());
-exit();
 
 // ----------------------
 // 1. Fetch all customers
@@ -120,9 +120,9 @@ exit();
 
 
 
-// --------------------
-// 2. Fetch all tickets
-// --------------------
+// ---------------------------------
+// 2. Fetch all tickets and messages
+// ---------------------------------
 // 
 $page_number = 1;
 $number_tickets = 0;
@@ -140,26 +140,6 @@ do {
 } while (count($response) > 0 && $page_number <= $DEBUG_LIMIT);
 echo "$number_tickets tickets retrieved.";
 
-
-
-
-
-// -------
-// Process
-// -------
-
-// TODO: map states and fields of data objects
-function processAgents($groove_agents) {
-
-}
-
-function processMessages($groove_messages) {
-}
-
-function processTickets($groove_tickets) {
-    // statuses for Groove: unread, opened, pending, closed, spam
-    // statuses for Help Scout: active, pending, closed, spam
-}
 
 // -------
 // Publish
@@ -207,12 +187,8 @@ foreach ($uploadQueue as $model) {
 var_dump($error_mapping);
 
 // Task breakdown
-// TODO: create queue of jobs to update so we don't spam the HelpScout connection
-// TODO: determine rate limiting for API and batch jobs according to that ratio
-// TODO: execute batches
-
-// TODO: unit tests for email validation; that the correct customer/models were created
+// TODO: unit tests for email validation; that the correct customer/models were created; unit testing for ini file loading
 
 // Nice-to-haves
 // TODO: generate progress updater
-// TODO: wizard for updating php.ini
+// TODO: wizard for updating php.ini?
