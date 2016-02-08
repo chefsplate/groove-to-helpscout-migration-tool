@@ -3,11 +3,11 @@
 /**
  * Created by PhpStorm.
  * User: david
- * Date: 2016-02-04
- * Time: 1:29 PM
+ * Date: 2016-02-05
+ * Time: 11:44 AM
  *
  */
-class TicketProcessor implements ProcessorInterface
+class MessageProcessor implements ProcessorInterface
 {
     /**
      * @return Closure
@@ -17,9 +17,6 @@ class TicketProcessor implements ProcessorInterface
         return function ($customers_list) {
             $processed_customers = array();
             foreach ($customers_list as $groove_customer) {
-
-
-                makeRateLimitedRequest(null, null, null);
 
                 // Groove: email, name, about, twitter_username, title, company_name, phone_number, location, website_url, linkedin_username
                 // HelpScout Customer (subset of Person): firstName, lastName, photoUrl, photoType, gender, age, organization, jobTitle, location, createdAt, modifiedAt
