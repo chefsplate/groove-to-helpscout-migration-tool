@@ -1,25 +1,27 @@
 <?php
 
+namespace App\Console\Commands\Processors;
+
 /**
  * Created by PhpStorm.
  * User: david
  * Date: 2016-02-04
  * Time: 1:29 PM
- *
  */
-class TicketProcessor implements ProcessorInterface
+class CustomerProcessor implements ProcessorInterface
 {
     /**
      * @return Closure
      */
     public static function getProcessor()
     {
+        /**
+         * @param $customers_list
+         * @return array
+         */
         return function ($customers_list) {
             $processed_customers = array();
             foreach ($customers_list as $groove_customer) {
-
-
-                makeRateLimitedRequest(null, null, null);
 
                 // Groove: email, name, about, twitter_username, title, company_name, phone_number, location, website_url, linkedin_username
                 // HelpScout Customer (subset of Person): firstName, lastName, photoUrl, photoType, gender, age, organization, jobTitle, location, createdAt, modifiedAt
@@ -126,7 +128,7 @@ class TicketProcessor implements ProcessorInterface
                     }
 
                     $processed_customers [] = $customer;
-                } catch (HelpScout\ApiException $e) {
+                } catch (\HelpScout\ApiException $e) {
                     echo $e->getMessage();
                     print_r($e->getErrors());
                 }

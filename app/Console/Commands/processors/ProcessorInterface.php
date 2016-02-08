@@ -1,4 +1,7 @@
 <?php
+
+namespace App\Console\Commands\Processors;
+
 /**
  * Created by PhpStorm.
  * User: david

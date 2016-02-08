@@ -35,4 +35,16 @@ return [
         'secret' => env('STRIPE_SECRET'),
     ],
 
+    // Groove HQ client API key
+    'groove' => [
+        'key' => 'REPLACE ME',
+        'ratelimit' => 30
+    ],
+
+    // HelpScout client API key
+    'helpscout' => [
+        'key' => 'REPLACE ME',
+        'ratelimit' => 200
+    ]
+
 ];

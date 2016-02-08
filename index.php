@@ -3,25 +3,14 @@
 require 'vendor/autoload.php';
 
 spl_autoload_register(function ($class) {
-    include 'processors/' . $class . '.php';
+    include 'Processors/' . $class . '.php';
 });
-
-// Parse configurations and define as constants
-$ini_array = parse_ini_file("conf/keys.ini");
-define("GROOVEHQ_API_KEY", $ini_array['groovehq_client_api_key']);
-define("HELPSCOUT_API_KEY", $ini_array['helpscout_client_api_key']);
-define("GROOVEHQ_REQUESTS_PER_MINUTE", intval($ini_array['groovehq_rate_limit']));
-define("HELPSCOUT_REQUESTS_PER_MINUTE", intval($ini_array['helpscout_rate_limit']));
-
-
-$users_ini_array = parse_ini_file("conf/user-mapping.ini");
 
 
 // FIXME: remove after development
 $DEBUG_LIMIT = 5;
 
-$requests_processed_this_minute = 0;
-$start_of_minute_timestamp = time();
+
 $uploadQueue = array();
 
 // ---------------------
@@ -29,66 +18,14 @@ $uploadQueue = array();
 // ---------------------
 
 // TODO: Move acquisition to its own module
-$gh = new \GrooveHQ\Client(GROOVEHQ_API_KEY);
+
 
 $agents_service = $gh->agents();
-$customers_service = $gh->customers();
+
 $messages_service = $gh->messages();
 $tickets_service = $gh->tickets();
 $mailboxes_service = $gh->mailboxes();
 $groups_service = $gh->groups();
-
-function makeRateLimitedRequest($requestFunction, $processFunction = null, $rate_limit) {
-    global $requests_processed_this_minute, $start_of_minute_timestamp;
-    if ($requests_processed_this_minute >= $rate_limit) {
-        $seconds_to_sleep = 60 - (time() - $start_of_minute_timestamp);
-        if ($seconds_to_sleep > 0) {
-            // TODO: nicer formatting (maybe a viewer)
-            echo "Rate limit reached. Waiting $seconds_to_sleep seconds. <br>";
-            sleep($seconds_to_sleep);
-        }
-        $start_of_minute_timestamp = time();
-        $requests_processed_this_minute = 0;
-    } elseif (time() - $start_of_minute_timestamp > 60) {
-        $start_of_minute_timestamp = time();
-        $requests_processed_this_minute = 0;
-    }
-    $response = $requestFunction();
-    $requests_processed_this_minute++;
-    if ($processFunction != null) {
-        /** @var callable $processFunction */
-        addToQueue($processFunction($response));
-    } else {
-        // don't do anything
-    }
-    return $response;
-}
-
-function addToQueue($jobs_list) {
-    global $uploadQueue;
-    $uploadQueue = array_merge($uploadQueue, $jobs_list);
-}
-
-
-// ----------------------
-// 1. Fetch all customers
-// ----------------------
-// Customers come first, as the process of creating conversations may create a new customer
-$page_number = 1;
-$number_customers = 0;
-
-do {
-    $response = makeRateLimitedRequest(
-        function () use ($customers_service, $page_number) {
-            return $customers_service->list(['page' => $page_number, 'per_page' => 50])['customers'];
-        },
-        CustomerProcessor::getProcessor(),
-        GROOVEHQ_REQUESTS_PER_MINUTE);
-    echo "Retrieved " . count($response) . " customers from page " . $page_number . " <br>";
-    $number_customers += count($response);
-    $page_number++;
-} while (count($response) > 0 && $page_number <= $DEBUG_LIMIT);
-echo "$number_customers customers retrieved.";
 
 
 
@@ -146,10 +83,8 @@ echo "$number_tickets tickets retrieved.";
 // -------
 
 // TODO: move publish to its own module
-use HelpScout\ApiClient;
 
-$requests_processed_this_minute = 0;
-$start_of_minute_timestamp = time();
+
 
 // Create customers
 $client = null;
