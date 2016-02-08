@@ -7,6 +7,8 @@ This ETL tool uses the Acquire -> Process -> Publish sequence of phases as sugge
 ## Requirements
 
 - PHP 5.4+
+- [Laravel](https://laravel.com/docs/5.1/installation) (for queues)
+- MySQL (for maintaining queued jobs) - can be installed via [MAMP](https://www.mamp.info/en/)
 - [Composer](https://getcomposer.org/download/)
 
 ### Dependencies
@@ -19,10 +21,9 @@ We leverage the following libraries via Composer:
 
 Clone project and run `composer install` in the root folder of this project.
 
-In the same folder, run:
-`php -S localhost:8001`
+Update config/database.php to point to your local database. Create the database if necessary (e.g. helpscout-migration).
 
-Navigate to http://localhost:8001/index.php in your browser.
+Run `php artisan sync-customers` in the root of the Laravel project. Customers come first, as the process of creating conversations may create a new customer.
 
 ### Within HelpScout
 
@@ -56,3 +57,12 @@ For help moving from Zendesk, Desk or UserVoice, check out the [HelpScout knowle
 The tool currently does not perform:
 
 - Migration of attachments and images
+- Front-end monitoring of progress
+- Restarting only failed migration tasks
+
+## Challenges
+
+Long-running process (may take hours; batches may fail anytime).
+Queueing several jobs while adhering to API rate limit. 
+Monitoring on the front-end. 
+Start the job then how do you tell what has been finished, and which ones failed?
