@@ -1,6 +1,6 @@
 composer.phar
 /vendor/
-/config/keys.ini
+config/services.php
 .idea
 php.ini
 
