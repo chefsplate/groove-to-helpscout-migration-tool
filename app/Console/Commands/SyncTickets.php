@@ -18,7 +18,7 @@ class SyncTickets extends SyncCommandBase
      *
      * @var string
      */
-    protected $description = 'Command description';
+    protected $description = 'Sync tickets from Groove to HelpScout';
 
     /**
      * Create a new command instance.
@@ -38,5 +38,11 @@ class SyncTickets extends SyncCommandBase
     public function handle()
     {
         //
+        $agents_service = $this->grooveClient->agents();
+
+        $messages_service = $this->grooveClient->messages();
+        $tickets_service = $this->grooveClient->tickets();
+        $mailboxes_service = $this->grooveClient->mailboxes();
+        $groups_service = $this->grooveClient->groups();
     }
 }

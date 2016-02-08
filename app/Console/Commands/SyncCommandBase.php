@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use HelpScout\ApiClient;
 use Illuminate\Console\Command;
 use Symfony\Component\Console\Helper\ProgressBar;
 
@@ -12,14 +13,27 @@ class SyncCommandBase extends Command
 
     public $uploadQueue = array();
 
+    protected $grooveClient;
+    protected $helpscoutClient;
+
     /**
      * @var ProgressBar
      */
-    public $progress_bar;
+    public $progressBar;
 
     public function __construct()
     {
         parent::__construct();
+
+        $this->grooveClient = new \GrooveHQ\Client(config('services.groove.key'));
+        $this->helpscoutClient = ApiClient::getInstance();
+    }
+
+    public function createProgressBar($total_units)
+    {
+        $this->progressBar = $this->output->createProgressBar($total_units);
+        $this->progressBar->setFormat('%current%/%max% [%bar%] %percent%% %elapsed%/%estimated% | %message%');
+        $this->progressBar->setMessage('');
     }
 
     function addToQueue($jobs_list) {
@@ -30,10 +44,10 @@ class SyncCommandBase extends Command
         if (SyncCommandBase::$requests_processed_this_minute >= $rate_limit) {
             $seconds_to_sleep = 60 - (time() - SyncCommandBase::$start_of_minute_timestamp);
             if ($seconds_to_sleep > 0) {
-                $this->progress_bar->setMessage("Rate limit reached. Waiting $seconds_to_sleep seconds.");
-                $this->progress_bar->display();
+                $this->progressBar->setMessage("Rate limit reached. Waiting $seconds_to_sleep seconds.");
+                $this->progressBar->display();
                 sleep($seconds_to_sleep);
-                $this->progress_bar->setMessage("");
+                $this->progressBar->setMessage("");
             }
             SyncCommandBase::$start_of_minute_timestamp = time();
             SyncCommandBase::$requests_processed_this_minute = 0;

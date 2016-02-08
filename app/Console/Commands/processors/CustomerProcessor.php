@@ -19,9 +19,9 @@ class CustomerProcessor implements ProcessorInterface
          * @param $customers_list
          * @return array
          */
-        return function ($customers_list) {
-            $processed_customers = array();
-            foreach ($customers_list as $groove_customer) {
+        return function ($customersList) {
+            $processedCustomers = array();
+            foreach ($customersList as $grooveCustomer) {
 
                 // Groove: email, name, about, twitter_username, title, company_name, phone_number, location, website_url, linkedin_username
                 // HelpScout Customer (subset of Person): firstName, lastName, photoUrl, photoType, gender, age, organization, jobTitle, location, createdAt, modifiedAt
@@ -31,109 +31,109 @@ class CustomerProcessor implements ProcessorInterface
                     $customer = new \HelpScout\model\Customer();
 
                     // Groove doesn't separate these fields
-                    $full_name = $groove_customer['name'];
-                    $spacePos = strpos($full_name, ' ');
+                    $fullName = $grooveCustomer['name'];
+                    $spacePos = strpos($fullName, ' ');
                     if ($spacePos !== false) {
-                        $customer->setFirstName(substr($full_name, 0, $spacePos));
-                        $customer->setLastName((trim(substr($full_name, $spacePos + 1))));
+                        $customer->setFirstName(substr($fullName, 0, $spacePos));
+                        $customer->setLastName((trim(substr($fullName, $spacePos + 1))));
                     } else {
-                        $customer->setFirstName($full_name);
+                        $customer->setFirstName($fullName);
                     }
 
-                    $customer->setOrganization($groove_customer['company_name']);
+                    $customer->setOrganization($grooveCustomer['company_name']);
                     // Job title must be 60 characters or less
-                    $customer->setJobTitle(substr($groove_customer['title'], 0, 60));
-                    $customer->setLocation($groove_customer['location']);
-                    $customer->setBackground($groove_customer['about']);
+                    $customer->setJobTitle(substr($grooveCustomer['title'], 0, 60));
+                    $customer->setLocation($grooveCustomer['location']);
+                    $customer->setBackground($grooveCustomer['about']);
 
                     // Groove doesn't have addresses
 
-                    if ($groove_customer['phone_number'] != null) {
+                    if ($grooveCustomer['phone_number'] != null) {
                         $phonenumber = new \HelpScout\model\customer\PhoneEntry();
-                        $phonenumber->setValue($groove_customer['phone_number']);
+                        $phonenumber->setValue($grooveCustomer['phone_number']);
                         $phonenumber->setLocation("home");
                         $customer->setPhones(array($phonenumber));
                     }
 
                     // Emails: at least one email is required
                     // Groove only supports one email address, which means the email field could contain multiple emails
-                    $email_addresses = array();
-                    $split_emails = preg_split("/( |;|,)/", $groove_customer['email']);
+                    $emailAddresses = array();
+                    $splitEmails = preg_split("/( |;|,)/", $grooveCustomer['email']);
                     // test to make sure all email addresses are valid
-                    if (sizeof($split_emails) == 1) {
-                        $email_entry = new \HelpScout\model\customer\EmailEntry();
-                        $email_entry->setValue($groove_customer['email']);
-                        $email_entry->setLocation("primary");
+                    if (sizeof($splitEmails) == 1) {
+                        $emailEntry = new \HelpScout\model\customer\EmailEntry();
+                        $emailEntry->setValue($grooveCustomer['email']);
+                        $emailEntry->setLocation("primary");
 
-                        array_push($email_addresses, $email_entry);
+                        array_push($emailAddresses, $emailEntry);
                     } else {
                         // Test to make sure every email address is valid
                         $first = true;
-                        foreach ($split_emails as $address_to_test) {
-                            if (strlen(trim($address_to_test)) === 0) {
+                        foreach ($splitEmails as $addressToTest) {
+                            if (strlen(trim($addressToTest)) === 0) {
                                 continue;
                             }
-                            if (!filter_var($address_to_test, FILTER_VALIDATE_EMAIL)) {
+                            if (!filter_var($addressToTest, FILTER_VALIDATE_EMAIL)) {
                                 // breaking up the address resulted in invalid emails; use the original address
-                                $email_addresses = array();
-                                $email_entry = new \HelpScout\model\customer\EmailEntry();
-                                $email_entry->setValue($groove_customer['email']);
-                                $email_entry->setLocation("primary");
+                                $emailAddresses = array();
+                                $emailEntry = new \HelpScout\model\customer\EmailEntry();
+                                $emailEntry->setValue($grooveCustomer['email']);
+                                $emailEntry->setLocation("primary");
 
-                                array_push($email_addresses, $email_entry);
+                                array_push($emailAddresses, $emailEntry);
 
                                 break;
                             } else {
-                                $email_entry = new \HelpScout\model\customer\EmailEntry();
-                                $email_entry->setValue($address_to_test);
+                                $emailEntry = new \HelpScout\model\customer\EmailEntry();
+                                $emailEntry->setValue($addressToTest);
 
                                 if ($first) {
-                                    $email_entry->setLocation("primary");
+                                    $emailEntry->setLocation("primary");
                                     $first = false;
                                 } else {
-                                    $email_entry->setLocation("other");
+                                    $emailEntry->setLocation("other");
                                 }
 
-                                array_push($email_addresses, $email_entry);
+                                array_push($emailAddresses, $emailEntry);
                             }
                         }
                     }
-                    $customer->setEmails($email_addresses);
+                    $customer->setEmails($emailAddresses);
 
                     // Social Profiles (Groove supports Twitter and LinkedIn)
-                    $social_profiles = array();
-                    if ($groove_customer['twitter_username'] != null) {
+                    $socialProfiles = array();
+                    if ($grooveCustomer['twitter_username'] != null) {
                         $twitter = new \HelpScout\model\customer\SocialProfileEntry();
-                        $twitter->setValue($groove_customer['twitter_username']);
+                        $twitter->setValue($grooveCustomer['twitter_username']);
                         $twitter->setType("twitter");
-                        $social_profiles [] = $twitter;
+                        $socialProfiles [] = $twitter;
                     }
 
-                    if ($groove_customer['linkedin_username'] != null) {
+                    if ($grooveCustomer['linkedin_username'] != null) {
                         $linkedin = new \HelpScout\model\customer\SocialProfileEntry();
-                        $linkedin->setValue($groove_customer['linkedin_username']);
+                        $linkedin->setValue($grooveCustomer['linkedin_username']);
                         $linkedin->setType("linkedin");
-                        $social_profiles [] = $linkedin;
+                        $socialProfiles [] = $linkedin;
                     }
 
-                    $customer->setSocialProfiles($social_profiles);
+                    $customer->setSocialProfiles($socialProfiles);
 
                     // Groove doesn't have chats
 
-                    if ($groove_customer['website_url'] != null) {
+                    if ($grooveCustomer['website_url'] != null) {
                         $website = new \HelpScout\model\customer\WebsiteEntry();
-                        $website->setValue($groove_customer['website_url']);
+                        $website->setValue($grooveCustomer['website_url']);
 
                         $customer->setWebsites(array($website));
                     }
 
-                    $processed_customers [] = $customer;
+                    $processedCustomers [] = $customer;
                 } catch (\HelpScout\ApiException $e) {
                     echo $e->getMessage();
                     print_r($e->getErrors());
                 }
             }
-            return $processed_customers;
+            return $processedCustomers;
         };
     }
 }

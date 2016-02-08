@@ -125,7 +125,7 @@ class MessageProcessor implements ProcessorInterface
                     }
 
                     $processed_customers [] = $customer;
-                } catch (HelpScout\ApiException $e) {
+                } catch (\HelpScout\ApiException $e) {
                     echo $e->getMessage();
                     print_r($e->getErrors());
                 }

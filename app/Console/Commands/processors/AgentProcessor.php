@@ -26,7 +26,7 @@ class AgentProcessor implements ProcessorInterface
                 try {
                     var_dump($groove_agent);
                     // TODO: ensure mapping exists in user-mapping
-                } catch (HelpScout\ApiException $e) {
+                } catch (\HelpScout\ApiException $e) {
                     echo $e->getMessage();
                     print_r($e->getErrors());
                 }

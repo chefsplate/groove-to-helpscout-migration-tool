@@ -18,7 +18,7 @@ class SyncAttachments extends SyncCommandBase
      *
      * @var string
      */
-    protected $description = 'Command description';
+    protected $description = 'Sync message attachments from Groove to HelpScout';
 
     /**
      * Create a new command instance.
