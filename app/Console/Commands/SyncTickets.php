@@ -54,7 +54,7 @@ class SyncTickets extends SyncCommandBase
                 return $ticketsService->list(['page' => 1, 'per_page' => 1])['meta'];
             },
             null,
-            config('services.groove.ratelimit'));
+            GROOVE);
         $totalTickets = $response['pagination']['total_count'];
 
         $this->createProgressBar($totalTickets);
@@ -68,7 +68,7 @@ class SyncTickets extends SyncCommandBase
                     return $ticketsService->list(['page' => $pageNumber, 'per_page' => 50])['tickets'];
                 },
                 TicketProcessor::getProcessor($this, array('ticketsService' => $ticketsService)),
-                config('services.groove.ratelimit'));
+                GROOVE);
             $this->progressBar->advance(count($response));
             $numberTickets += count($response);
             $pageNumber++;
@@ -91,8 +91,8 @@ class SyncTickets extends SyncCommandBase
                 if (strcasecmp(end($classname), "Conversation") === 0) {
                     $client = $this->helpscoutClient;
                     $response = $this->makeRateLimitedRequest(function () use ($client, $model) {
-                        $client->createConversation($model);
-                    }, null, config('services.helpscout.ratelimit'));
+                        $client->createConversation($model, true); // imported = true to prevent spam!
+                    }, null, HELPSCOUT);
                 }
             } catch (ApiException $e) {
                 foreach ($e->getErrors() as $error) {

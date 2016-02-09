@@ -48,7 +48,7 @@ class SyncCustomers extends SyncCommandBase
                 return $customersService->list(['page' => 1, 'per_page' => 1])['meta'];
             },
             null,
-            config('services.groove.ratelimit'));
+            GROOVE);
         $totalCustomers = $response['pagination']['total_count'];
 
         $this->createProgressBar($totalCustomers);
@@ -62,7 +62,7 @@ class SyncCustomers extends SyncCommandBase
                     return $customersService->list(['page' => $pageNumber, 'per_page' => 50])['customers'];
                 },
                 CustomerProcessor::getProcessor($this),
-                config('services.groove.ratelimit'));
+                GROOVE);
             $this->progressBar->advance(count($response));
             $numberCustomers += count($response);
             $pageNumber++;
@@ -86,7 +86,7 @@ class SyncCustomers extends SyncCommandBase
                     $client = $this->helpscoutClient;
                     $response = $this->makeRateLimitedRequest(function () use ($client, $model) {
                         $client->createCustomer($model);
-                    }, null, config('services.helpscout.ratelimit'));
+                    }, null, HELPSCOUT);
                 }
             } catch (ApiException $e) {
                 foreach ($e->getErrors() as $error) {

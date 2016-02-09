@@ -57,8 +57,13 @@ class SyncCommandBase extends Command
         $this->uploadQueue = array_merge($this->uploadQueue, $jobs_list);
     }
 
-    public function makeRateLimitedRequest($requestFunction, $processFunction = null, $rate_limit) {
-        if (SyncCommandBase::$requests_processed_this_minute >= $rate_limit) {
+    public function makeRateLimitedRequest($requestFunction, $processFunction = null, $serviceName) {
+        if (strcasecmp($serviceName, GROOVE)) {
+            $rateLimit = config('services.groove.ratelimit');
+        } else {
+            $rateLimit = config('services.helpscout.ratelimit');
+        }
+        if (SyncCommandBase::$requests_processed_this_minute >= $rateLimit) {
             $seconds_to_sleep = 60 - (time() - SyncCommandBase::$start_of_minute_timestamp);
             if ($seconds_to_sleep > 0) {
                 $this->progressBar->setMessage("Rate limit reached. Waiting $seconds_to_sleep seconds.");
