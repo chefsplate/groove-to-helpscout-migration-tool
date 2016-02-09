@@ -7,6 +7,7 @@ This ETL tool uses the Acquire -> Process -> Publish sequence of phases as sugge
 ## Requirements
 
 - PHP 5.4+
+- `allow_url_fopen` must be allowed (for attachment downloads)
 - [Laravel](https://laravel.com/docs/5.1/installation) (for queues)
 - MySQL (for maintaining queued jobs) - can be installed via [MAMP](https://www.mamp.info/en/)
 - [Composer](https://getcomposer.org/download/)
