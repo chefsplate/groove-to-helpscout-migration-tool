@@ -2,6 +2,17 @@
 
 namespace App\Console\Commands\Processors;
 
+use App\Console\Commands\SyncCommandBase;
+use HelpScout\ApiException;
+use HelpScout\Collection;
+use HelpScout\model\Conversation;
+use HelpScout\model\Mailbox;
+use HelpScout\model\ref\PersonRef;
+use HelpScout\model\thread\AbstractThread;
+use HelpScout\model\thread\Customer;
+use HelpScout\model\thread\Note;
+use HelpScout\model\User;
+
 /**
  * Created by PhpStorm.
  * User: david
@@ -11,129 +22,283 @@ namespace App\Console\Commands\Processors;
  */
 class TicketProcessor implements ProcessorInterface
 {
+    // We need a mapping of agents to MailboxRefs
     /**
-     * @return Closure
+     * @param $consoleCommand SyncCommandBase
      */
-    public static function getProcessor()
+    private static function retrieveHelpscoutMailboxes($consoleCommand)
     {
-        return function ($customers_list) {
-            $processed_customers = array();
-            foreach ($customers_list as $groove_customer) {
+        $pageNumber = 1;
+        $helpscoutMailboxes = array();
+        try {
+            do {
+                /* @var $response Collection */
+                $response = $consoleCommand->makeRateLimitedRequest(function () use ($consoleCommand, $pageNumber) {
+                    return $consoleCommand->getHelpScoutClient()->getMailboxes(['page' => $pageNumber]);
+                }, null, HELPSCOUT);
+                $helpscoutMailboxes = array_merge($helpscoutMailboxes, $response->getItems());
+                $pageNumber++;
+            } while ($response->hasNextPage());
+        } catch (ApiException $e) {
+            echo $e->getMessage();
+            print_r($e->getErrors());
+        }
 
+        return $helpscoutMailboxes;
+    }
 
-                makeRateLimitedRequest(null, null, null);
+    /**
+     * @param $consoleCommand SyncCommandBase
+     */
+    private static function retrieveHelpscoutUsers($consoleCommand)
+    {
+        $pageNumber = 1;
+        $helpscoutUsers = array();
+        try {
+            do {
+                /* @var $response Collection */
+                $response = $consoleCommand->makeRateLimitedRequest(function () use ($consoleCommand, $pageNumber) {
+                    return $consoleCommand->getHelpScoutClient()->getUsers(['page' => $pageNumber]);
+                }, null, HELPSCOUT);
+                $helpscoutUsers = array_merge($helpscoutUsers, $response->getItems());
+                $pageNumber++;
+            } while ($response->hasNextPage());
+        } catch (ApiException $e) {
+            echo $e->getMessage();
+            print_r($e->getErrors());
+        }
 
-                // Groove: email, name, about, twitter_username, title, company_name, phone_number, location, website_url, linkedin_username
-                // HelpScout Customer (subset of Person): firstName, lastName, photoUrl, photoType, gender, age, organization, jobTitle, location, createdAt, modifiedAt
-                // HelpScout Person: id, firstName, lastName, email, phone, type (user, customer, team)
+        return $helpscoutUsers;
+    }
+
+    /**
+     * @param $mailboxes array
+     * @param $emailAddress string
+     * @return Mailbox
+     */
+    private static function findMatchingMailbox($mailboxes, $emailAddress) {
+        /* @var $mailbox Mailbox */
+        foreach ($mailboxes as $mailbox) {
+            if (strcasecmp($mailbox->getEmail(), $emailAddress) === 0) {
+                return $mailbox;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * @param $users array
+     * @param $emailAddress string
+     * @return User
+     */
+    private static function findMatchingUserWithEmail($users, $emailAddress)
+    {
+        /* @var $user User */
+        foreach ($users as $user) {
+            if (strcasecmp($user->getEmail(), $emailAddress) === 0) {
+                return $user;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * @param $consoleCommand SyncCommandBase
+     * @param array $servicesMapping
+     * @return \Closure
+     */
+    public static function getProcessor($consoleCommand, $servicesMapping)
+    {
+        /**
+         * @param $ticketsList
+         * @return array
+         */
+        return function ($ticketsList) use ($consoleCommand, $servicesMapping) {
+            $processedTickets = array();
+
+            $helpscoutMailboxes = self::retrieveHelpscoutMailboxes($consoleCommand);
+            $helpscoutUsers = self::retrieveHelpscoutUsers($consoleCommand);
+
+            foreach ($ticketsList as $grooveTicket) {
+                $ticketsService = $servicesMapping['ticketsService'];
 
                 try {
-                    $customer = new \HelpScout\model\Customer();
+                    $grooveAgent = $consoleCommand->makeRateLimitedRequest(function () use ($ticketsService, $grooveTicket) {
+                        return $ticketsService->assignee(['ticket_number' => $grooveTicket['number']])['agent'];
+                    }, null, GROOVE);
 
-                    // Groove doesn't separate these fields
-                    $full_name = $groove_customer['name'];
-                    $spacePos = strpos($full_name, ' ');
-                    if ($spacePos !== false) {
-                        $customer->setFirstName(substr($full_name, 0, $spacePos));
-                        $customer->setLastName((trim(substr($full_name, $spacePos + 1))));
+                    $conversation = new Conversation();
+                    $conversation->setType('email');
+
+                    // mailbox
+                    $assignedMailboxEmail = $grooveAgent;
+                    if (!$grooveAgent) {
+                        $assignedMailboxEmail = config('services.helpscout.default_mailbox');
+                    }
+                    $conversation->setMailbox(
+                        self::findMatchingMailbox($helpscoutMailboxes, $assignedMailboxEmail)
+                            ->toRef()
+                    );
+                    if (!$conversation->getMailbox()) {
+                        $exception = new ApiException("Mailbox not found: $assignedMailboxEmail");
+                        $exception->setErrors(
+                            array(
+                                [
+                                    'property' => 'email',
+                                    'message' => 'Mailbox not found',
+                                    'value' => $assignedMailboxEmail
+                                ]
+                            ));
+                        throw $exception;
+                    }
+
+                    // CustomerRef
+                    $matches = array();
+                    if (isset($grooveTicket['links']['customer']) && preg_match('@^https://api.groovehq.com/v1/customers/(.*)@i',
+                            $grooveTicket['links']['customer'], $matches) === 1) {
+                        $conversation->setCustomer(new PersonRef((object) array('email' => $matches[0])));
                     } else {
-                        $customer->setFirstName($full_name);
+                        throw new ApiException("No customer defined for ticket: " . $grooveTicket['number']);
                     }
 
-                    $customer->setOrganization($groove_customer['company_name']);
-                    // Job title must be 60 characters or less
-                    $customer->setJobTitle(substr($groove_customer['title'], 0, 60));
-                    $customer->setLocation($groove_customer['location']);
-                    $customer->setBackground($groove_customer['about']);
+                    // CreatedAt
+                    $conversation->setCreatedAt($grooveTicket['created_at']);
 
-                    // Groove doesn't have addresses
+                    $conversation->setThreads(self::retrieveThreadsForGrooveTicket($consoleCommand, $servicesMapping, $grooveTicket, $helpscoutUsers));
 
-                    if ($groove_customer['phone_number'] != null) {
-                        $phonenumber = new \HelpScout\model\customer\PhoneEntry();
-                        $phonenumber->setValue($groove_customer['phone_number']);
-                        $phonenumber->setLocation("home");
-                        $customer->setPhones(array($phonenumber));
+                    switch ($grooveTicket['state']) {
+                        case 'unread':
+                        case 'opened':
+                            $conversation->setStatus('active');
+                            break;
+                        case 'pending':
+                            $conversation->setStatus('pending');
+                            break;
+                        case 'closed':
+                            $conversation->setStatus('closed');
+                            break;
+                        case 'spam':
+                            $conversation->setStatus('spam');
+                            break;
+                        default:
+                            $consoleCommand->error("Unknown state provided: " . $grooveTicket['state']);
+                            break;
                     }
 
-                    // Emails: at least one email is required
-                    // Groove only supports one email address, which means the email field could contain multiple emails
-                    $email_addresses = array();
-                    $split_emails = preg_split("/( |;|,)/", $groove_customer['email']);
-                    // test to make sure all email addresses are valid
-                    if (sizeof($split_emails) == 1) {
-                        $email_entry = new \HelpScout\model\customer\EmailEntry();
-                        $email_entry->setValue($groove_customer['email']);
-                        $email_entry->setLocation("primary");
-
-                        array_push($email_addresses, $email_entry);
-                    } else {
-                        // Test to make sure every email address is valid
-                        $first = true;
-                        foreach ($split_emails as $address_to_test) {
-                            if (strlen(trim($address_to_test)) === 0) {
-                                continue;
-                            }
-                            if (!filter_var($address_to_test, FILTER_VALIDATE_EMAIL)) {
-                                // breaking up the address resulted in invalid emails; use the original address
-                                $email_addresses = array();
-                                $email_entry = new \HelpScout\model\customer\EmailEntry();
-                                $email_entry->setValue($groove_customer['email']);
-                                $email_entry->setLocation("primary");
-
-                                array_push($email_addresses, $email_entry);
-
-                                break;
-                            } else {
-                                $email_entry = new \HelpScout\model\customer\EmailEntry();
-                                $email_entry->setValue($address_to_test);
-
-                                if ($first) {
-                                    $email_entry->setLocation("primary");
-                                    $first = false;
-                                } else {
-                                    $email_entry->setLocation("other");
-                                }
-
-                                array_push($email_addresses, $email_entry);
-                            }
-                        }
-                    }
-                    $customer->setEmails($email_addresses);
-
-                    // Social Profiles (Groove supports Twitter and LinkedIn)
-                    $social_profiles = array();
-                    if ($groove_customer['twitter_username'] != null) {
-                        $twitter = new \HelpScout\model\customer\SocialProfileEntry();
-                        $twitter->setValue($groove_customer['twitter_username']);
-                        $twitter->setType("twitter");
-                        $social_profiles [] = $twitter;
-                    }
-
-                    if ($groove_customer['linkedin_username'] != null) {
-                        $linkedin = new \HelpScout\model\customer\SocialProfileEntry();
-                        $linkedin->setValue($groove_customer['linkedin_username']);
-                        $linkedin->setType("linkedin");
-                        $social_profiles [] = $linkedin;
-                    }
-
-                    $customer->setSocialProfiles($social_profiles);
-
-                    // Groove doesn't have chats
-
-                    if ($groove_customer['website_url'] != null) {
-                        $website = new \HelpScout\model\customer\WebsiteEntry();
-                        $website->setValue($groove_customer['website_url']);
-
-                        $customer->setWebsites(array($website));
-                    }
-
-                    $processed_customers [] = $customer;
-                } catch (\HelpScout\ApiException $e) {
+                    $processedTickets [] = $conversation;
+                } catch (ApiException $e) {
+                    // TODO: output this to console instead of dumping
                     echo $e->getMessage();
                     print_r($e->getErrors());
                 }
             }
-            return $processed_customers;
+            return $processedTickets;
         };
+    }
+
+    /**
+     * @param $consoleCommand SyncCommandBase
+     * @param $servicesMapping array
+     * @param $grooveTicket array
+     * @param $helpscoutUsers array
+     * @return array
+     */
+    private static function retrieveThreadsForGrooveTicket($consoleCommand, $servicesMapping, $grooveTicket, $helpscoutUsers)
+    {
+        $pageNumber = 1;
+        $helpscoutThreads = array();
+        $ticketsService = $servicesMapping['ticketsService'];
+        try {
+            do {
+                /* @var $response array */
+                $response = $consoleCommand->makeRateLimitedRequest(function () use ($consoleCommand, $pageNumber, $ticketsService, $grooveTicket) {
+                    return $ticketsService->messages(['page' => $pageNumber, 'per_page' => 50, 'ticket_number' => $grooveTicket['number']]);
+                }, null, GROOVE);
+
+                foreach($response['messages'] as $grooveMessage) {
+                    /* @var $thread AbstractThread */
+                    $thread = null;
+                    if ($grooveMessage['note']) {
+                        $thread = new Note();
+                        $thread->setType('note');
+                    } else {
+                        $thread = new Customer();
+                        $thread->setType('customer');
+                    }
+                    $thread->setBody($grooveMessage['body']);
+                    $thread->setStatus($grooveMessage['status']);
+                    $thread->setCreatedAt($grooveMessage['created_at']);
+                    $thread->setStatus('nochange');
+
+                    // CreatedBy is a PersonRef - type must be 'user' for messages or notes
+                    // Type must be 'customer' for customer threads
+                    // Chat or phone types can be either 'user' or 'customer'
+                    // 'user' types require an ID field
+                    // 'customer' types require either an ID or email
+                    list($authorEmailAddress, $addressType) = self::extractEmailAddressFromGrooveLink($grooveTicket['links']['author'], 'author');
+                    $id = null;
+                    if (strcasecmp($addressType, 'customer') === 0) {
+                        /* @var $response Collection */
+                        $response = $consoleCommand->makeRateLimitedRequest(function () use ($consoleCommand, $authorEmailAddress) {
+                            return $consoleCommand->getHelpScoutClient()->searchCustomersByEmail($authorEmailAddress);
+                        }, null, GROOVE);
+                        if ($response->getCount() > 0) {
+                            /* @var $firstItem \HelpScout\model\Customer */
+                            $firstItem = $response->getItems()[0];
+                            $id = $firstItem->getId();
+                        }
+                    } else {
+                        $matchingUser = self::findMatchingUserWithEmail($helpscoutUsers, $authorEmailAddress);
+                        if (!$matchingUser) {
+                            throw new ApiException("No corresponding user found for: $authorEmailAddress");
+                        }
+                    }
+                    $personRef = new PersonRef((object) array(
+                        'type' => ($grooveMessage['note'] ? 'user' : 'customer'),
+                        'email' => $authorEmailAddress,
+                        'id' => $id
+                    ));
+                    $thread->setCreatedBy($personRef);
+
+                    // To field
+                    list($recipientEmailAddress, $addressType) = self::extractEmailAddressFromGrooveLink($grooveTicket['links']['recipient'], 'recipient');
+                    if ($recipientEmailAddress) {
+                        $thread->setToList(array($recipientEmailAddress));
+                    }
+
+                    // TODO: retrieve attachments
+                    $thread->setAttachments();
+
+                    $helpscoutThreads []= $thread;
+                }
+                $pageNumber++;
+            } while ($pageNumber < $response['meta']['pagination']['total_pages']);
+        } catch (ApiException $e) {
+            echo $e->getMessage();
+            print_r($e->getErrors());
+        }
+
+        return $helpscoutThreads;
+    }
+
+    /**
+     * @param $grooveLink
+     * @param $personType
+     * @return mixed
+     * @throws ApiException
+     */
+    private static function extractEmailAddressFromGrooveLink($grooveLink, $personType)
+    {
+        $matches = array();
+        if (preg_match('@^https://api.groovehq.com/v1/customers/(.*)@i',
+                $grooveLink, $matches) === 1
+        ) {
+            return array($matches[0], 'customer');
+        } elseif (preg_match('@^https://api.groovehq.com/v1/agents/(.*)@i',
+                $grooveLink, $matches) === 1
+        ) {
+            return array($matches[0], 'agent');
+        }
+        throw new ApiException("No $personType defined for Groove link: " . $grooveLink);
     }
 }
