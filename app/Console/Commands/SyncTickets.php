@@ -38,16 +38,11 @@ class SyncTickets extends SyncCommandBase
      */
     public function handle()
     {
-        //
-        $agents_service = $this->grooveClient->agents();
-        $messages_service = $this->grooveClient->messages();
-        $mailboxes_service = $this->grooveClient->mailboxes();
-        $groups_service = $this->grooveClient->groups();
-
         // Acquire and process
         // -------------------
 
         $ticketsService = $this->grooveClient->tickets();
+        $messages_service = $this->grooveClient->messages();
 
         $response = $this->makeRateLimitedRequest(
             function () use ($ticketsService) {
@@ -67,7 +62,8 @@ class SyncTickets extends SyncCommandBase
                 function () use ($ticketsService, $pageNumber) {
                     return $ticketsService->list(['page' => $pageNumber, 'per_page' => 50])['tickets'];
                 },
-                TicketProcessor::getProcessor($this, array('ticketsService' => $ticketsService)),
+                TicketProcessor::getProcessor($this, array('ticketsService' => $ticketsService,
+                    'messagesService' => $messages_service)),
                 GROOVE);
             $this->progressBar->advance(count($response));
             $numberTickets += count($response);

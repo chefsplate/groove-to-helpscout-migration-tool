@@ -14,8 +14,7 @@ class Kernel extends ConsoleKernel
      */
     protected $commands = [
         Commands\SyncCustomers::class,
-        Commands\SyncTickets::class,
-        Commands\SyncAttachments::class,
+        Commands\SyncTickets::class
     ];
 
     /**

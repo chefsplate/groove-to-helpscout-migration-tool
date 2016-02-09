@@ -3,8 +3,10 @@
 namespace App\Console\Commands\Processors;
 
 use App\Console\Commands\SyncCommandBase;
+use finfo;
 use HelpScout\ApiException;
 use HelpScout\Collection;
+use HelpScout\model\Attachment;
 use HelpScout\model\Conversation;
 use HelpScout\model\Mailbox;
 use HelpScout\model\ref\PersonRef;
@@ -155,7 +157,7 @@ class TicketProcessor implements ProcessorInterface
                     // CustomerRef
                     $matches = array();
                     if (isset($grooveTicket['links']['customer']) && preg_match('@^https://api.groovehq.com/v1/customers/(.*)@i',
-                            $grooveTicket['links']['customer'], $matches) === 1) {
+                            $grooveTicket['links']['customer']['href'], $matches) === 1) {
                         $conversation->setCustomer(new PersonRef((object) array('email' => $matches[0])));
                     } else {
                         throw new ApiException("No customer defined for ticket: " . $grooveTicket['number']);
@@ -207,12 +209,12 @@ class TicketProcessor implements ProcessorInterface
     {
         $pageNumber = 1;
         $helpscoutThreads = array();
-        $ticketsService = $servicesMapping['ticketsService'];
+        $messagesService = $servicesMapping['messagesService'];
         try {
             do {
                 /* @var $response array */
-                $response = $consoleCommand->makeRateLimitedRequest(function () use ($consoleCommand, $pageNumber, $ticketsService, $grooveTicket) {
-                    return $ticketsService->messages(['page' => $pageNumber, 'per_page' => 50, 'ticket_number' => $grooveTicket['number']]);
+                $response = $consoleCommand->makeRateLimitedRequest(function () use ($consoleCommand, $pageNumber, $messagesService, $grooveTicket) {
+                    return $messagesService->messages(['page' => $pageNumber, 'per_page' => 50, 'ticket_number' => $grooveTicket['number']]);
                 }, null, GROOVE);
 
                 foreach($response['messages'] as $grooveMessage) {
@@ -235,7 +237,7 @@ class TicketProcessor implements ProcessorInterface
                     // Chat or phone types can be either 'user' or 'customer'
                     // 'user' types require an ID field
                     // 'customer' types require either an ID or email
-                    list($authorEmailAddress, $addressType) = self::extractEmailAddressFromGrooveLink($grooveTicket['links']['author'], 'author');
+                    list($authorEmailAddress, $addressType) = self::extractEmailAddressFromGrooveLink($grooveTicket['links']['author']['href'], 'author');
                     $id = null;
                     if (strcasecmp($addressType, 'customer') === 0) {
                         /* @var $response Collection */
@@ -261,13 +263,12 @@ class TicketProcessor implements ProcessorInterface
                     $thread->setCreatedBy($personRef);
 
                     // To field
-                    list($recipientEmailAddress, $addressType) = self::extractEmailAddressFromGrooveLink($grooveTicket['links']['recipient'], 'recipient');
+                    list($recipientEmailAddress, $addressType) = self::extractEmailAddressFromGrooveLink($grooveTicket['links']['recipient']['href'], 'recipient');
                     if ($recipientEmailAddress) {
                         $thread->setToList(array($recipientEmailAddress));
                     }
 
-                    // TODO: retrieve attachments
-                    $thread->setAttachments();
+                    $thread->setAttachments(self::retrieveAttachmentsForGrooveMessage($consoleCommand, $servicesMapping, $grooveMessage));
 
                     $helpscoutThreads []= $thread;
                 }
@@ -300,5 +301,45 @@ class TicketProcessor implements ProcessorInterface
             return array($matches[0], 'agent');
         }
         throw new ApiException("No $personType defined for Groove link: " . $grooveLink);
+    }
+
+    /**
+     * @param $consoleCommand SyncCommandBase
+     * @param $servicesMapping array
+     * @param $grooveTicket array
+     * @return array
+     */
+    private static function retrieveAttachmentsForGrooveMessage($consoleCommand, $servicesMapping, $grooveMessage)
+    {
+        $messagesService = $servicesMapping['messagesService'];
+        $grooveMessageId = null;
+        $matches = array();
+        $helpscoutAttachments = array();
+        if (preg_match('@^https://api.groovehq.com/v1/attachments?message=(.*)@i',
+                $grooveMessage['links']['attachments']['href'], $matches) === 1
+        ) {
+            $grooveMessageId = $matches[0];
+        } else {
+            return $helpscoutAttachments;
+        }
+
+        $attachments = $consoleCommand->makeRateLimitedRequest(function () use ($consoleCommand, $messagesService, $grooveMessageId) {
+            return $messagesService->attachments(['message' => $grooveMessageId])['attachments'];
+        }, null, GROOVE);
+
+        foreach($attachments as $grooveAttachment) {
+            $helpscoutAttachment = new Attachment();
+            $helpscoutAttachment->setFileName($grooveAttachment['filename']);
+
+            $buffer = file_get_contents($grooveAttachment['url']);
+            $finfo = new finfo(FILEINFO_MIME_TYPE);
+            $mimeType = $finfo->buffer($buffer);
+
+            $helpscoutAttachment->setMimeType($mimeType);
+            $helpscoutAttachment->setData($buffer);
+            $helpscoutAttachments []= $helpscoutAttachment;
+        }
+
+        return $helpscoutAttachments;
     }
 }
