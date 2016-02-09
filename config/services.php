@@ -44,7 +44,8 @@ return [
     // HelpScout client API key
     'helpscout' => [
         'key' => 'REPLACE ME',
-        'ratelimit' => 200
+        'ratelimit' => 200,
+        'default_mailbox' => 'david.chang@chefsplate.com'
     ]
 
 ];
