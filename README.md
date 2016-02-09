@@ -7,6 +7,7 @@ This ETL tool uses the Acquire -> Process -> Publish sequence of phases as sugge
 ## Requirements
 
 - PHP 5.4+
+- `allow_url_fopen` must be allowed (for attachment downloads)
 - [Laravel](https://laravel.com/docs/5.1/installation) (for queues)
 - MySQL (for maintaining queued jobs) - can be installed via [MAMP](https://www.mamp.info/en/)
 - [Composer](https://getcomposer.org/download/)
@@ -21,14 +22,17 @@ We leverage the following libraries via Composer:
 
 Clone project and run `composer install` in the root folder of this project.
 
-Update config/database.php to point to your local database. Create the database if necessary (e.g. helpscout-migration).
-
-Run `php artisan sync-customers` in the root of the Laravel project. Customers come first, as the process of creating conversations may create a new customer.
+Update config/services.php to use your API keys and your default HelpScout mailbox.
 
 ### Within HelpScout
 
 Create all of your agent (team, user & mailbox) accounts in HelpScout first. Our tool will need to map the Groove agent 
 email addresses with HelpScout user emails and Groove mailboxes to HelpScout mailboxes (manual input may be required).
+
+### CLI Usage
+
+Run `php artisan sync-customers` in the root of the Laravel project. Customers come first, as the process of creating conversations may create a new customer.
+Once that succeeds, run: `php artisan sync-tickets` and `php artisan sync-attachments`.
 
 ## Notes
 
@@ -59,6 +63,7 @@ The tool currently does not perform:
 - Migration of attachments and images
 - Front-end monitoring of progress
 - Restarting only failed migration tasks
+- Export CSV of imports with issues
 
 ## Challenges
 

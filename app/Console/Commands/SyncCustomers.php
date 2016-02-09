@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Console\Commands\Processors\CustomerProcessor;
+use HelpScout\ApiException;
 
 class SyncCustomers extends SyncCommandBase
 {
@@ -37,15 +38,17 @@ class SyncCustomers extends SyncCommandBase
      */
     public function handle()
     {
-        $customersService = $this->grooveClient->customers();
+        // Acquire and process
+        // -------------------
 
+        $customersService = $this->grooveClient->customers();
 
         $response = $this->makeRateLimitedRequest(
             function () use ($customersService) {
                 return $customersService->list(['page' => 1, 'per_page' => 1])['meta'];
             },
             null,
-            config('services.groove.ratelimit'));
+            GROOVE);
         $totalCustomers = $response['pagination']['total_count'];
 
         $this->createProgressBar($totalCustomers);
@@ -58,8 +61,8 @@ class SyncCustomers extends SyncCommandBase
                 function () use ($customersService, $pageNumber) {
                     return $customersService->list(['page' => $pageNumber, 'per_page' => 50])['customers'];
                 },
-                CustomerProcessor::getProcessor(),
-                config('services.groove.ratelimit'));
+                CustomerProcessor::getProcessor($this),
+                GROOVE);
             $this->progressBar->advance(count($response));
             $numberCustomers += count($response);
             $pageNumber++;
@@ -69,16 +72,8 @@ class SyncCustomers extends SyncCommandBase
 
         $this->info("\nCompleted fetching $numberCustomers customers.");
 
-
-        // Create customers
-        try {
-            $this->helpscoutClient->setKey(config('services.helpscout.key'));
-        } catch (\HelpScout\ApiException $e) {
-            $this->error("Error creating client");
-            $this->error($e->getMessage());
-            $this->error(print_r($e->getErrors(), TRUE));
-            return;
-        }
+        // Publish/create customers
+        // ------------------------
 
         $errorMapping = array();
 
@@ -91,9 +86,9 @@ class SyncCustomers extends SyncCommandBase
                     $client = $this->helpscoutClient;
                     $response = $this->makeRateLimitedRequest(function () use ($client, $model) {
                         $client->createCustomer($model);
-                    }, null, config('services.helpscout.ratelimit'));
+                    }, null, HELPSCOUT);
                 }
-            } catch (\HelpScout\ApiException $e) {
+            } catch (ApiException $e) {
                 foreach ($e->getErrors() as $error) {
                     $errorMapping[$error['message']] [] = $error;
                     $this->progressBar->setMessage('Error: [' . $error['property']. '] ' . $error['message'] . ' (' . $error['value'] . ')' . str_pad(' ', 20));
