@@ -1,6 +1,12 @@
 <?php
 
 namespace App\Console\Commands\Processors;
+use HelpScout\ApiException;
+use HelpScout\model\Customer;
+use HelpScout\model\customer\EmailEntry;
+use HelpScout\model\customer\PhoneEntry;
+use HelpScout\model\customer\SocialProfileEntry;
+use HelpScout\model\customer\WebsiteEntry;
 
 /**
  * Created by PhpStorm.
@@ -11,9 +17,11 @@ namespace App\Console\Commands\Processors;
 class CustomerProcessor implements ProcessorInterface
 {
     /**
+     * @param null $consoleCommand
+     * @param null $servicesMapping
      * @return Closure
      */
-    public static function getProcessor()
+    public static function getProcessor($consoleCommand = null, $servicesMapping = null)
     {
         /**
          * @param $customers_list
@@ -28,7 +36,7 @@ class CustomerProcessor implements ProcessorInterface
                 // HelpScout Person: id, firstName, lastName, email, phone, type (user, customer, team)
 
                 try {
-                    $customer = new \HelpScout\model\Customer();
+                    $customer = new Customer();
 
                     // Groove doesn't separate these fields
                     $fullName = $grooveCustomer['name'];
@@ -49,7 +57,7 @@ class CustomerProcessor implements ProcessorInterface
                     // Groove doesn't have addresses
 
                     if ($grooveCustomer['phone_number'] != null) {
-                        $phonenumber = new \HelpScout\model\customer\PhoneEntry();
+                        $phonenumber = new PhoneEntry();
                         $phonenumber->setValue($grooveCustomer['phone_number']);
                         $phonenumber->setLocation("home");
                         $customer->setPhones(array($phonenumber));
@@ -61,7 +69,7 @@ class CustomerProcessor implements ProcessorInterface
                     $splitEmails = preg_split("/( |;|,)/", $grooveCustomer['email']);
                     // test to make sure all email addresses are valid
                     if (sizeof($splitEmails) == 1) {
-                        $emailEntry = new \HelpScout\model\customer\EmailEntry();
+                        $emailEntry = new EmailEntry();
                         $emailEntry->setValue($grooveCustomer['email']);
                         $emailEntry->setLocation("primary");
 
@@ -76,7 +84,7 @@ class CustomerProcessor implements ProcessorInterface
                             if (!filter_var($addressToTest, FILTER_VALIDATE_EMAIL)) {
                                 // breaking up the address resulted in invalid emails; use the original address
                                 $emailAddresses = array();
-                                $emailEntry = new \HelpScout\model\customer\EmailEntry();
+                                $emailEntry = new EmailEntry();
                                 $emailEntry->setValue($grooveCustomer['email']);
                                 $emailEntry->setLocation("primary");
 
@@ -84,7 +92,7 @@ class CustomerProcessor implements ProcessorInterface
 
                                 break;
                             } else {
-                                $emailEntry = new \HelpScout\model\customer\EmailEntry();
+                                $emailEntry = new EmailEntry();
                                 $emailEntry->setValue($addressToTest);
 
                                 if ($first) {
@@ -103,14 +111,14 @@ class CustomerProcessor implements ProcessorInterface
                     // Social Profiles (Groove supports Twitter and LinkedIn)
                     $socialProfiles = array();
                     if ($grooveCustomer['twitter_username'] != null) {
-                        $twitter = new \HelpScout\model\customer\SocialProfileEntry();
+                        $twitter = new SocialProfileEntry();
                         $twitter->setValue($grooveCustomer['twitter_username']);
                         $twitter->setType("twitter");
                         $socialProfiles [] = $twitter;
                     }
 
                     if ($grooveCustomer['linkedin_username'] != null) {
-                        $linkedin = new \HelpScout\model\customer\SocialProfileEntry();
+                        $linkedin = new SocialProfileEntry();
                         $linkedin->setValue($grooveCustomer['linkedin_username']);
                         $linkedin->setType("linkedin");
                         $socialProfiles [] = $linkedin;
@@ -121,14 +129,14 @@ class CustomerProcessor implements ProcessorInterface
                     // Groove doesn't have chats
 
                     if ($grooveCustomer['website_url'] != null) {
-                        $website = new \HelpScout\model\customer\WebsiteEntry();
+                        $website = new WebsiteEntry();
                         $website->setValue($grooveCustomer['website_url']);
 
                         $customer->setWebsites(array($website));
                     }
 
                     $processedCustomers [] = $customer;
-                } catch (\HelpScout\ApiException $e) {
+                } catch (ApiException $e) {
                     echo $e->getMessage();
                     print_r($e->getErrors());
                 }

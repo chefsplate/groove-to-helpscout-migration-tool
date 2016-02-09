@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Console\Commands\Processors\CustomerProcessor;
+use HelpScout\ApiException;
 
 class SyncCustomers extends SyncCommandBase
 {
@@ -37,8 +38,10 @@ class SyncCustomers extends SyncCommandBase
      */
     public function handle()
     {
-        $customersService = $this->grooveClient->customers();
+        // Acquire and process
+        // -------------------
 
+        $customersService = $this->grooveClient->customers();
 
         $response = $this->makeRateLimitedRequest(
             function () use ($customersService) {
@@ -58,7 +61,7 @@ class SyncCustomers extends SyncCommandBase
                 function () use ($customersService, $pageNumber) {
                     return $customersService->list(['page' => $pageNumber, 'per_page' => 50])['customers'];
                 },
-                CustomerProcessor::getProcessor(),
+                CustomerProcessor::getProcessor($this),
                 config('services.groove.ratelimit'));
             $this->progressBar->advance(count($response));
             $numberCustomers += count($response);
@@ -69,16 +72,8 @@ class SyncCustomers extends SyncCommandBase
 
         $this->info("\nCompleted fetching $numberCustomers customers.");
 
-
-        // Create customers
-        try {
-            $this->helpscoutClient->setKey(config('services.helpscout.key'));
-        } catch (\HelpScout\ApiException $e) {
-            $this->error("Error creating client");
-            $this->error($e->getMessage());
-            $this->error(print_r($e->getErrors(), TRUE));
-            return;
-        }
+        // Publish/create customers
+        // ------------------------
 
         $errorMapping = array();
 
@@ -93,7 +88,7 @@ class SyncCustomers extends SyncCommandBase
                         $client->createCustomer($model);
                     }, null, config('services.helpscout.ratelimit'));
                 }
-            } catch (\HelpScout\ApiException $e) {
+            } catch (ApiException $e) {
                 foreach ($e->getErrors() as $error) {
                     $errorMapping[$error['message']] [] = $error;
                     $this->progressBar->setMessage('Error: [' . $error['property']. '] ' . $error['message'] . ' (' . $error['value'] . ')' . str_pad(' ', 20));

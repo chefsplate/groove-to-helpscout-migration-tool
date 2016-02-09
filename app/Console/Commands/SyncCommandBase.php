@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use HelpScout\ApiClient;
+use HelpScout\ApiException;
 use Illuminate\Console\Command;
 use Symfony\Component\Console\Helper\ProgressBar;
 
@@ -27,6 +28,15 @@ class SyncCommandBase extends Command
 
         $this->grooveClient = new \GrooveHQ\Client(config('services.groove.key'));
         $this->helpscoutClient = ApiClient::getInstance();
+
+        try {
+            $this->helpscoutClient->setKey(config('services.helpscout.key'));
+        } catch (ApiException $e) {
+            $this->error("Error creating client");
+            $this->error($e->getMessage());
+            $this->error(print_r($e->getErrors(), TRUE));
+            return;
+        }
     }
 
     public function createProgressBar($total_units)
@@ -34,6 +44,13 @@ class SyncCommandBase extends Command
         $this->progressBar = $this->output->createProgressBar($total_units);
         $this->progressBar->setFormat('%current%/%max% [%bar%] %percent%% %elapsed%/%estimated% | %message%');
         $this->progressBar->setMessage('');
+    }
+
+    /**
+     * @return ApiClient
+     */
+    public function getHelpScoutClient() {
+        return $this->helpscoutClient;
     }
 
     function addToQueue($jobs_list) {

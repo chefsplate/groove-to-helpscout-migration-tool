@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Console\Commands\Processors;
+use HelpScout\ApiException;
 
 /**
  * Created by PhpStorm.
@@ -11,9 +12,11 @@ namespace App\Console\Commands\Processors;
 class AgentProcessor implements ProcessorInterface
 {
     /**
+     * @param null $consoleCommand
+     * @param null $servicesMapping
      * @return Closure
      */
-    public static function getProcessor()
+    public static function getProcessor($consoleCommand = null, $servicesMapping = null)
     {
         return function ($agents_list) {
             $processed_agents = array();
@@ -26,7 +29,7 @@ class AgentProcessor implements ProcessorInterface
                 try {
                     var_dump($groove_agent);
                     // TODO: ensure mapping exists in user-mapping
-                } catch (\HelpScout\ApiException $e) {
+                } catch (ApiException $e) {
                     echo $e->getMessage();
                     print_r($e->getErrors());
                 }
