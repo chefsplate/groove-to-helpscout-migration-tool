@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands\Processors;
 
+use App\Console\Commands\Processors\Exceptions\ValidationException;
 use App\Console\Commands\SyncCommandBase;
 use finfo;
 use HelpScout\ApiException;
@@ -24,7 +25,6 @@ use HelpScout\model\User;
  */
 class TicketProcessor implements ProcessorInterface
 {
-    // We need a mapping of agents to MailboxRefs
     /**
      * @param $consoleCommand SyncCommandBase
      */
@@ -75,13 +75,28 @@ class TicketProcessor implements ProcessorInterface
 
     /**
      * @param $mailboxes array
-     * @param $emailAddress string
+     * @param $mailboxEmail string
      * @return Mailbox
      */
-    private static function findMatchingMailbox($mailboxes, $emailAddress) {
+    private static function findMatchingMailboxByEmail($mailboxes, $mailboxEmail) {
         /* @var $mailbox Mailbox */
         foreach ($mailboxes as $mailbox) {
-            if (strcasecmp($mailbox->getEmail(), $emailAddress) === 0) {
+            if (strcasecmp($mailbox->getEmail(), $mailboxEmail) === 0) {
+                return $mailbox;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * @param $mailboxes array
+     * @param $mailboxName string
+     * @return Mailbox
+     */
+    private static function findMatchingMailboxByName($mailboxes, $mailboxName) {
+        /* @var $mailbox Mailbox */
+        foreach ($mailboxes as $mailbox) {
+            if (strcasecmp($mailbox->getName(), $mailboxName) === 0) {
                 return $mailbox;
             }
         }
@@ -118,41 +133,54 @@ class TicketProcessor implements ProcessorInterface
         return function ($ticketsList) use ($consoleCommand, $servicesMapping) {
             $processedTickets = array();
 
+
+            // Ensure each mailbox in Groove maps to a HelpScout mailbox
+            $consoleCommand->info("Validation check: ensuring each mailbox in Groove maps to a HelpScout mailbox");
             $helpscoutMailboxes = self::retrieveHelpscoutMailboxes($consoleCommand);
             $helpscoutUsers = self::retrieveHelpscoutUsers($consoleCommand);
 
+            $mailboxesService = $servicesMapping['mailboxesService'];
+            $grooveMailboxes = $consoleCommand->makeRateLimitedRequest(function () use ($mailboxesService) {
+                return $mailboxesService->mailboxes()['mailboxes'];
+            }, null, GROOVE);
+
+            foreach($grooveMailboxes as $grooveMailbox) {
+                $grooveMailboxName = $grooveMailbox['name'];
+                if (!($helpscoutMailbox = self::findMatchingMailboxByName($helpscoutMailboxes, $grooveMailboxName))) {
+                    throw new ValidationException('Missing corresponding HelpScout mailbox named: ' . $grooveMailboxName);
+                } else {
+                    $consoleCommand->info("[ OK ] " . $grooveMailboxName . " mapped to " . $helpscoutMailbox->getEmail());
+                }
+            }
+
             foreach ($ticketsList as $grooveTicket) {
-                $ticketsService = $servicesMapping['ticketsService'];
-
                 try {
-                    $grooveAgent = $consoleCommand->makeRateLimitedRequest(function () use ($ticketsService, $grooveTicket) {
-                        return $ticketsService->assignee(['ticket_number' => $grooveTicket['number']])['agent'];
-                    }, null, GROOVE);
-
                     $conversation = new Conversation();
                     $conversation->setType('email');
 
                     // mailbox
-                    $assignedMailboxEmail = $grooveAgent;
-                    if (!$grooveAgent) {
-                        $assignedMailboxEmail = config('services.helpscout.default_mailbox');
+                    $mailboxName = $grooveTicket['mailbox'];
+                    $assignedMailbox = self::findMatchingMailboxByName($helpscoutMailboxes, $mailboxName);
+                    if (!$assignedMailbox) {
+                        $mailboxRef = self::findMatchingMailboxByEmail($helpscoutMailboxes, config('services.helpscout.default_mailbox'))->toRef();
+                    } else {
+                        $mailboxRef = $assignedMailbox->toRef();
                     }
-                    $conversation->setMailbox(
-                        self::findMatchingMailbox($helpscoutMailboxes, $assignedMailboxEmail)
-                            ->toRef()
-                    );
+                    $conversation->setMailbox($mailboxRef);
                     if (!$conversation->getMailbox()) {
-                        $exception = new ApiException("Mailbox not found: $assignedMailboxEmail");
+                        $exception = new ApiException("Mailbox not found in HelpScout: " . $mailboxName);
                         $exception->setErrors(
                             array(
                                 [
-                                    'property' => 'email',
+                                    'property' => 'mailbox',
                                     'message' => 'Mailbox not found',
-                                    'value' => $assignedMailboxEmail
+                                    'value' => $mailboxName
                                 ]
                             ));
                         throw $exception;
                     }
+
+                    $conversation->setTags();
 
                     // CustomerRef
                     $matches = array();
