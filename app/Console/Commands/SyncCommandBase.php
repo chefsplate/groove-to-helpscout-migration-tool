@@ -58,7 +58,8 @@ class SyncCommandBase extends Command
     }
 
     /**
-     * TODO
+     * TODO document this method
+     * TODO support tracking of calls to each service for rate limiting
      *
      * @param $requestFunction
      * @param null $processFunction

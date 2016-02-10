@@ -8,8 +8,7 @@ This ETL tool uses the Acquire -> Process -> Publish sequence of phases as sugge
 
 - PHP 5.4+
 - `allow_url_fopen` must be allowed (for attachment downloads)
-- [Laravel](https://laravel.com/docs/5.1/installation) (for queues)
-- MySQL (for maintaining queued jobs) - can be installed via [MAMP](https://www.mamp.info/en/)
+- [Laravel](https://laravel.com/docs/5.1/installation) (for console commands)
 - [Composer](https://getcomposer.org/download/)
 
 ### Dependencies
@@ -47,8 +46,17 @@ sense. If the email is invalid, you will likely need to manually create these us
 
 ### What is migrated
 - Customers
-- Tickets and messages
+- Tickets
+- Messages
 - Attachments and images
+- Tags
+
+### What is not migrated
+These will need to be manually created:
+- Agents/users and groups
+- Mailboxes and folders
+- Reports
+- Webhooks
 
 ### Mapping limitations
 
@@ -68,6 +76,7 @@ For help moving from Zendesk, Desk or UserVoice, check out the [HelpScout knowle
 The tool currently does not perform:
 
 - Restarting only failed migration tasks
+- Start process again after failed or timed out migration
 - Export CSV of imports with issues
 
 ## Challenges

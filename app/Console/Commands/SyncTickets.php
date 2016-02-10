@@ -29,6 +29,8 @@ class SyncTickets extends SyncCommandBase
     public function __construct()
     {
         parent::__construct();
+
+        date_default_timezone_set('America/Toronto');
     }
 
     /**
@@ -45,14 +47,16 @@ class SyncTickets extends SyncCommandBase
         $ticketsService = $this->grooveClient->tickets();
         $messagesService = $this->grooveClient->messages();
         $mailboxesService = $this->grooveClient->mailboxes();
+        $customersService = $this->grooveClient->customers();
+        $agentsService = $this->grooveClient->agents();
 
-        $response = $this->makeRateLimitedRequest(
+        $grooveTicketsQueryResponse = $this->makeRateLimitedRequest(
             function () use ($ticketsService) {
                 return $ticketsService->list(['page' => 1, 'per_page' => 1])['meta'];
             },
             null,
             GROOVE);
-        $totalTickets = $response['pagination']['total_count'];
+        $totalTickets = $grooveTicketsQueryResponse['pagination']['total_count'];
 
         $this->createProgressBar($totalTickets);
 
@@ -60,18 +64,20 @@ class SyncTickets extends SyncCommandBase
         $numberTickets = 0;
 
         do {
-            $response = $this->makeRateLimitedRequest(
+            $grooveTicketsResponse = $this->makeRateLimitedRequest(
                 function () use ($ticketsService, $pageNumber) {
                     return $ticketsService->list(['page' => $pageNumber, 'per_page' => 50])['tickets'];
                 },
                 TicketProcessor::getProcessor($this, array('ticketsService' => $ticketsService,
                     'messagesService' => $messagesService,
-                    'mailboxesService' => $mailboxesService)),
+                    'mailboxesService' => $mailboxesService,
+                    'customersService' => $customersService,
+                    'agentsService' => $agentsService)),
                 GROOVE);
-            $this->progressBar->advance(count($response));
-            $numberTickets += count($response);
+            $this->progressBar->advance(count($grooveTicketsResponse));
+            $numberTickets += count($grooveTicketsResponse);
             $pageNumber++;
-        } while (count($response) > 0 && $pageNumber <= 2);
+        } while (count($grooveTicketsResponse) > 0 && $pageNumber <= 2);
 
         $this->progressBar->finish();
 
@@ -89,7 +95,7 @@ class SyncTickets extends SyncCommandBase
                 $classname = explode('\\', get_class($model));
                 if (strcasecmp(end($classname), "Conversation") === 0) {
                     $client = $this->helpscoutClient;
-                    $response = $this->makeRateLimitedRequest(function () use ($client, $model) {
+                    $createConversationResponse = $this->makeRateLimitedRequest(function () use ($client, $model) {
                         $client->createConversation($model, true); // imported = true to prevent spam!
                     }, null, HELPSCOUT);
                 }

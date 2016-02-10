@@ -43,13 +43,13 @@ class SyncCustomers extends SyncCommandBase
 
         $customersService = $this->grooveClient->customers();
 
-        $response = $this->makeRateLimitedRequest(
+        $grooveCustomersCountResponse = $this->makeRateLimitedRequest(
             function () use ($customersService) {
                 return $customersService->list(['page' => 1, 'per_page' => 1])['meta'];
             },
             null,
             GROOVE);
-        $totalCustomers = $response['pagination']['total_count'];
+        $totalCustomers = $grooveCustomersCountResponse['pagination']['total_count'];
 
         $this->createProgressBar($totalCustomers);
 
@@ -57,16 +57,16 @@ class SyncCustomers extends SyncCommandBase
         $numberCustomers = 0;
 
         do {
-            $response = $this->makeRateLimitedRequest(
+            $grooveCustomersListResponse = $this->makeRateLimitedRequest(
                 function () use ($customersService, $pageNumber) {
                     return $customersService->list(['page' => $pageNumber, 'per_page' => 50])['customers'];
                 },
                 CustomerProcessor::getProcessor($this),
                 GROOVE);
-            $this->progressBar->advance(count($response));
-            $numberCustomers += count($response);
+            $this->progressBar->advance(count($grooveCustomersListResponse));
+            $numberCustomers += count($grooveCustomersListResponse);
             $pageNumber++;
-        } while (count($response) > 0 && $pageNumber <= 2);
+        } while (count($grooveCustomersListResponse) > 0 && $pageNumber <= 2);
 
         $this->progressBar->finish();
 
@@ -84,7 +84,7 @@ class SyncCustomers extends SyncCommandBase
                 $classname = explode('\\', get_class($model));
                 if (strcasecmp(end($classname), "Customer") === 0) {
                     $client = $this->helpscoutClient;
-                    $response = $this->makeRateLimitedRequest(function () use ($client, $model) {
+                    $helpscoutCreateCustomerResponse = $this->makeRateLimitedRequest(function () use ($client, $model) {
                         $client->createCustomer($model);
                     }, null, HELPSCOUT);
                 }
