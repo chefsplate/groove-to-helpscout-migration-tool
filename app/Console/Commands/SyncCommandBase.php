@@ -57,6 +57,14 @@ class SyncCommandBase extends Command
         $this->uploadQueue = array_merge($this->uploadQueue, $jobs_list);
     }
 
+    /**
+     * TODO
+     *
+     * @param $requestFunction
+     * @param null $processFunction
+     * @param $serviceName
+     * @return mixed
+     */
     public function makeRateLimitedRequest($requestFunction, $processFunction = null, $serviceName) {
         if (strcasecmp($serviceName, GROOVE)) {
             $rateLimit = config('services.groove.ratelimit');
@@ -79,6 +87,7 @@ class SyncCommandBase extends Command
         }
         $response = $requestFunction();
         SyncCommandBase::$requests_processed_this_minute++;
+        // TODO: refactor processFunction - it should be responsible for adding to the queue
         if ($processFunction != null) {
             /** @var callable $processFunction */
             $this->addToQueue($processFunction($response));

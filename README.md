@@ -24,6 +24,8 @@ Clone project and run `composer install` in the root folder of this project.
 
 Update config/services.php to use your API keys and your default HelpScout mailbox.
 
+Ensure mailbox names within HelpScout correspond to the same mailbox names as Groove. A check will be made before syncing tickets.
+
 ### Within HelpScout
 
 Create all of your agent (team, user & mailbox) accounts in HelpScout first. Our tool will need to map the Groove agent 
@@ -43,6 +45,11 @@ As with all content management systems: Garbage in, garbage out.
 If your customer's full name is their phone number, do not expect the first and last name in HelpScout to make any
 sense. If the email is invalid, you will likely need to manually create these users yourself.
 
+### What is migrated
+- Customers
+- Tickets and messages
+- Attachments and images
+
 ### Mapping limitations
 
 Please be aware of the following when importing:
@@ -60,8 +67,6 @@ For help moving from Zendesk, Desk or UserVoice, check out the [HelpScout knowle
 
 The tool currently does not perform:
 
-- Migration of attachments and images
-- Front-end monitoring of progress
 - Restarting only failed migration tasks
 - Export CSV of imports with issues
 
