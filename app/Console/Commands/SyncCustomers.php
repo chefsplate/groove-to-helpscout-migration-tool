@@ -56,6 +56,7 @@ class SyncCustomers extends SyncCommandBase
         $pageNumber = 1;
         $numberCustomers = 0;
 
+        // TODO: for performance, we should upload immediately so we can continue at a given page number
         do {
             $grooveCustomersListResponse = $this->makeRateLimitedRequest(
                 function () use ($customersService, $pageNumber) {
@@ -90,7 +91,7 @@ class SyncCustomers extends SyncCommandBase
                 }
             } catch (ApiException $e) {
                 foreach ($e->getErrors() as $error) {
-                    $errorMapping[$error['message']] [] = $error;
+                    $errorMapping[$error['message']] [] = "[" . $error['property'] . "] " . $error['message'] . ": " . $error['value'];
                     $this->progressBar->setMessage('Error: [' . $error['property']. '] ' . $error['message'] . ' (' . $error['value'] . ')' . str_pad(' ', 20));
                 }
             }

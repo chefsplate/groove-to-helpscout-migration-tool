@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use GrooveHQ\Client as GrooveClient;
 use HelpScout\ApiClient;
 use HelpScout\ApiException;
 use Illuminate\Console\Command;
@@ -26,7 +27,7 @@ class SyncCommandBase extends Command
     {
         parent::__construct();
 
-        $this->grooveClient = new \GrooveHQ\Client(config('services.groove.key'));
+        $this->grooveClient = new GrooveClient(config('services.groove.key'));
         $this->helpscoutClient = ApiClient::getInstance();
 
         try {
@@ -51,6 +52,14 @@ class SyncCommandBase extends Command
      */
     public function getHelpScoutClient() {
         return $this->helpscoutClient;
+    }
+
+    /**
+     * @return GrooveClient
+     */
+    public function getGrooveClient()
+    {
+        return $this->grooveClient;
     }
 
     function addToQueue($jobs_list) {

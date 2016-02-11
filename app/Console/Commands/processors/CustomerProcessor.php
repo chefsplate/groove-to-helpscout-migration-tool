@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Console\Commands\Processors;
+use App\Console\Commands\APIHelper;
 use HelpScout\ApiException;
 use HelpScout\model\Customer;
 use HelpScout\model\customer\EmailEntry;
@@ -39,14 +40,11 @@ class CustomerProcessor implements ProcessorInterface
                     $customer = new Customer();
 
                     // Groove doesn't separate these fields
+                    /* @var $fullName string */
                     $fullName = $grooveCustomer['name'];
-                    $spacePos = strpos($fullName, ' ');
-                    if ($spacePos !== false) {
-                        $customer->setFirstName(substr($fullName, 0, $spacePos));
-                        $customer->setLastName((trim(substr($fullName, $spacePos + 1))));
-                    } else {
-                        $customer->setFirstName($fullName);
-                    }
+                    list($firstName, $lastName) = APIHelper::extractFirstAndLastNameFromFullName($fullName);
+                    $customer->setFirstName($firstName);
+                    $customer->setLastName($lastName);
 
                     $customer->setOrganization($grooveCustomer['company_name']);
                     // Job title must be 60 characters or less

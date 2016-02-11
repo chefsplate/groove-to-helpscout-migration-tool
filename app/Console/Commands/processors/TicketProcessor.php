@@ -78,13 +78,17 @@ class TicketProcessor implements ProcessorInterface
                             $grooveTicket['links']['customer']['href'], $matches) === 1) {
                         $customerEmail = $matches[1];
                         if (filter_var($customerEmail, FILTER_VALIDATE_EMAIL)) {
-                            $conversation->setCustomer(new PersonRef((object) array('email' => $customerEmail)));
+                            $helpscoutPersonRef = new PersonRef((object) array('email' => $customerEmail, 'type' => 'customer'));
+                            $conversation->setCustomer($helpscoutPersonRef);
+                            $conversation->setCreatedBy($helpscoutPersonRef);
                         } else {
                             $customersService = $servicesMapping['customersService'];
                             $grooveCustomer = $consoleCommand->makeRateLimitedRequest(function () use ($customersService, $customerEmail) {
                                 return $customersService->find(['customer_email' => $customerEmail])['customer'];
                             }, null, GROOVE);
-                            $conversation->setCustomer(new PersonRef((object) array('email' => $grooveCustomer['email'])));
+                            $helpscoutPersonRef = new PersonRef((object) array('email' => $grooveCustomer['email'], 'type' => 'customer'));
+                            $conversation->setCustomer($helpscoutPersonRef);
+                            $conversation->setCreatedBy($helpscoutPersonRef);
                         }
 
                     } else {
@@ -168,17 +172,26 @@ class TicketProcessor implements ProcessorInterface
                     // 'customer' types require either an ID or email
                     list($authorEmailAddress, $addressType) = self::extractEmailAddressFromGrooveLink($grooveMessage['links']['author']['href'], 'author');
                     $id = null;
+                    $personRef = new PersonRef();
                     if (strcasecmp($addressType, 'customer') === 0) {
                         /* @var $response Collection */
                         $helpscoutCustomer = $consoleCommand->makeRateLimitedRequest(function () use ($consoleCommand, $authorEmailAddress) {
                             return $consoleCommand->getHelpScoutClient()->searchCustomersByEmail($authorEmailAddress);
-                        }, null, GROOVE);
-                        // TODO: the customer could be blank - we need to fetch extra details from Groove.
-                        // May not be a bad idea to always retrieve the Groove customer
+                        }, null, HELPSCOUT);
                         if ($helpscoutCustomer->getCount() > 0) {
                             /* @var $firstItem \HelpScout\model\Customer */
                             $firstItem = $helpscoutCustomer->getItems()[0];
                             $id = $firstItem->getId();
+                        } else {
+                            // the customer could be blank - we need to fetch extra details from Groove
+                            // perhaps the sync-customers was not run?
+                            $consoleCommand->warn('Could not find HelpScout customer for ' . $authorEmailAddress . '. Was sync-customers command run?');
+                            $grooveCustomer = $consoleCommand->makeRateLimitedRequest(function () use ($consoleCommand, $authorEmailAddress) {
+                                return $consoleCommand->getGrooveClient()->customers()->searchCustomersByEmail($authorEmailAddress);
+                            }, null, GROOVE);
+                            list($firstName, $lastName) = APIHelper::extractFirstAndLastNameFromFullName($grooveCustomer['name']);
+                            $personRef->setFirstName($firstName);
+                            $personRef->setLastName($lastName);
                         }
                     } else {
                         $matchingUser = APIHelper::findMatchingUserWithEmail($authorEmailAddress);
@@ -186,6 +199,9 @@ class TicketProcessor implements ProcessorInterface
                             throw new ValidationException("No corresponding user found for: $authorEmailAddress");
                         }
                     }
+                    $personRef->setType($grooveMessage['note'] ? 'user' : 'customer');
+                    $personRef->setEmail($authorEmailAddress);
+                    $personRef->setId($id);
                     $personRef = new PersonRef((object) array(
                         'type' => ($grooveMessage['note'] ? 'user' : 'customer'),
                         'email' => $authorEmailAddress,

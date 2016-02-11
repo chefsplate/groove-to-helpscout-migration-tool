@@ -146,7 +146,7 @@ class SyncTickets extends SyncCommandBase
                 $this->error('Missing corresponding HelpScout mailbox named: ' . $grooveMailboxName);
                 $hasErrors = true;
             } else {
-                $this->info("[ OK ] " . $grooveMailboxName . " mapped to " . $helpscoutMailbox->getEmail());
+                $this->info("[ OK ] " . $grooveMailboxName . " mapped to " . $helpscoutMailbox->getEmail() . " (" . $helpscoutMailbox->getId() . ")");
             }
         }
 

@@ -155,4 +155,22 @@ class APIHelper
         }
         return null;
     }
+
+    /**
+     * @param $fullName string
+     * @return array
+     */
+    public static function extractFirstAndLastNameFromFullName($fullName)
+    {
+        $spacePos = strpos($fullName, ' ');
+        $firstName = null;
+        $lastName = null;
+        if ($spacePos !== false) {
+            $firstName = substr($fullName, 0, $spacePos);
+            $lastName = trim(substr($fullName, $spacePos + 1));
+        } else {
+            $firstName = $fullName;
+        }
+        return array($firstName, $lastName);
+    }
 }
