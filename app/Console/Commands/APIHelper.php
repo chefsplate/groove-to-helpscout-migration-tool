@@ -173,4 +173,30 @@ class APIHelper
         }
         return array($firstName, $lastName);
     }
+
+    /**
+     * @param $state
+     * @return string
+     */
+    public static function getHelpScoutStatusForGrooveState($state)
+    {
+        switch ($state) {
+            case 'unread':
+            case 'opened':
+                return 'active';
+                break;
+            case 'pending':
+                return 'pending';
+                break;
+            case 'closed':
+                return 'closed';
+                break;
+            case 'spam':
+                return 'spam';
+                break;
+            default:
+                return null;
+                break;
+        }
+    }
 }

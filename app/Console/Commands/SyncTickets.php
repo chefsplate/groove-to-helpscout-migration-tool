@@ -70,7 +70,7 @@ class SyncTickets extends SyncCommandBase
         do {
             $grooveTicketsResponse = $this->makeRateLimitedRequest(
                 function () use ($ticketsService, $pageNumber) {
-                    return $ticketsService->list(['page' => $pageNumber, 'per_page' => 5])['tickets'];
+                    return $ticketsService->list(['page' => $pageNumber, 'per_page' => 10])['tickets'];
                 },
                 TicketProcessor::getProcessor($this, array('ticketsService' => $ticketsService,
                     'messagesService' => $messagesService,
@@ -102,7 +102,8 @@ class SyncTickets extends SyncCommandBase
                 if (strcasecmp(end($classname), "Conversation") === 0) {
                     $client = $this->helpscoutClient;
                     $createConversationResponse = $this->makeRateLimitedRequest(function () use ($client, $model) {
-                        $client->createConversation($model, true); // imported = true to prevent spam!
+                        // very important!! set imported = true to prevent spam!
+                        $client->createConversation($model, true);
                     }, null, HELPSCOUT);
                 }
             } catch (ApiException $e) {
@@ -112,17 +113,32 @@ class SyncTickets extends SyncCommandBase
                         $this->progressBar->setMessage('Error: [' . $error['property'] . '] ' . $error['message'] . ' (' . $error['value'] . ')' . str_pad(' ', 20));
                     }
                 } else {
-                    $errorMapping[$e->getMessage()] []= "[" . $model->getCreatedAt()->format('c') . "] " . $model->getSubject();
+                    $errorMapping[$e->getMessage()] []= $model->getSubject();
                 }
-
+            } catch (\CurlException $ce) {
+                $errorMessage = "CurlException encountered for ticket \"" . $model->getSubject() . "\" (created by " . $model->getCreatedBy()->getEmail() . ")";
+                $this->error($errorMessage . ": " . $ce->getMessage());
+                $errorMapping[$ce->getMessage()] []= $errorMessage;
+            } catch (\ErrorException $errex) {
+                $errorMessage = "Exception encountered for ticket \"" . $model->getSubject() . "\" (created by " . $model->getCreatedBy()->getEmail() . ")";
+                $this->error($errorMessage . ": " . $errex->getMessage());
+                $errorMapping[$errex->getMessage()] []= $errorMessage;
+            } catch (\Exception $ex) {
+                $errorMessage = "Exception encountered for ticket \"" . $model->getSubject() . "\" (created by " . $model->getCreatedBy()->getEmail() . ")";
+                $this->error($errorMessage . ": " . $ex->getMessage());
+                $errorMapping[$ex->getMessage()] []= $errorMessage;
             }
             $this->progressBar->advance();
         }
         $this->progressBar->finish();
         $this->info("\nCompleted uploading tickets to HelpScout.");
 
-        // TODO: output to a CSV instead
-        $this->error(print_r($errorMapping, TRUE));
+        if (sizeof($errorMapping) > 0) {
+            // TODO: output to a CSV instead
+            $this->error(print_r($errorMapping, TRUE));
+        }
+
+
 
     }
 

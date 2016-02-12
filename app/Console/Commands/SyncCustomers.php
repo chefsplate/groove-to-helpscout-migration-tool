@@ -4,6 +4,8 @@ namespace App\Console\Commands;
 
 use App\Console\Commands\Processors\CustomerProcessor;
 use HelpScout\ApiException;
+use HelpScout\model\Conversation;
+use HelpScout\model\Customer;
 
 class SyncCustomers extends SyncCommandBase
 {
@@ -80,6 +82,7 @@ class SyncCustomers extends SyncCommandBase
 
         $this->createProgressBar(count($this->uploadQueue));
 
+        /* @var $model Customer */
         foreach ($this->uploadQueue as $model) {
             try {
                 $classname = explode('\\', get_class($model));
@@ -94,13 +97,23 @@ class SyncCustomers extends SyncCommandBase
                     $errorMapping[$error['message']] [] = "[" . $error['property'] . "] " . $error['message'] . ": " . $error['value'];
                     $this->progressBar->setMessage('Error: [' . $error['property']. '] ' . $error['message'] . ' (' . $error['value'] . ')' . str_pad(' ', 20));
                 }
+            } catch (\CurlException $ce) {
+                $errorMessage = 'CurlException encountered for customer ' . $model->getFullName() . ' (' . implode(', ', $model->getEmails()) . ')';
+                $this->error($errorMessage . ": " . $ce->getMessage());
+                $errorMapping[$ce->getMessage()] []= $errorMessage;
+            } catch (\Exception $ex) {
+                $errorMessage = 'Exception encountered for for customer ' . $model->getFullName() . ' (' . implode(', ', $model->getEmails()) . ')';
+                $this->error($errorMessage . ": " . $ex->getMessage());
+                $errorMapping[$ex->getMessage()] []= $errorMessage;
             }
             $this->progressBar->advance();
         }
         $this->progressBar->finish();
 
         // TODO: output to a CSV instead
-        $this->error(print_r($errorMapping, TRUE));
+        if (sizeof($errorMapping) > 0) {
+            $this->error(print_r($errorMapping, TRUE));
+        }
 
     }
 

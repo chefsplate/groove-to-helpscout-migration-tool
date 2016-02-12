@@ -95,28 +95,17 @@ class TicketProcessor implements ProcessorInterface
                         throw new ApiException("No customer defined for ticket: " . $grooveTicket['number']);
                     }
 
+                    // FIXME why can't we programmatically set this??
                     // CreatedAt
-                    $conversation->setCreatedAt(new DateTime($grooveTicket['created_at']));
+//                    $conversation->setCreatedAt(new DateTime($grooveTicket['created_at']));
 
                     $conversation->setThreads(self::retrieveThreadsForGrooveTicket($consoleCommand, $servicesMapping, $grooveTicket));
 
-                    switch ($grooveTicket['state']) {
-                        case 'unread':
-                        case 'opened':
-                            $conversation->setStatus('active');
-                            break;
-                        case 'pending':
-                            $conversation->setStatus('pending');
-                            break;
-                        case 'closed':
-                            $conversation->setStatus('closed');
-                            break;
-                        case 'spam':
-                            $conversation->setStatus('spam');
-                            break;
-                        default:
-                            $consoleCommand->error("Unknown state provided: " . $grooveTicket['state']);
-                            break;
+                    $status = APIHelper::getHelpScoutStatusForGrooveState($grooveTicket['state']);
+                    if ($status) {
+                        $conversation->setStatus($status);
+                    } else {
+                        $consoleCommand->error("Unknown state provided: " . $grooveTicket['state']);
                     }
 
                     $processedTickets [] = $conversation;
@@ -162,8 +151,17 @@ class TicketProcessor implements ProcessorInterface
                         $thread->setType('customer');
                     }
                     $thread->setBody($grooveMessage['body']);
-                    $thread->setCreatedAt(new DateTime($grooveMessage['created_at']));
-                    $thread->setStatus('nochange');
+                    // FIXME why can't we programmatically set this??
+//                    $thread->setCreatedAt(new DateTime($grooveMessage['created_at']));
+
+                    // There is no particular status for a single message in Groove
+                    // Assume the status is the same as the ticket's
+                    $status = APIHelper::getHelpScoutStatusForGrooveState($grooveTicket['state']);
+                    if ($status) {
+                        $thread->setStatus($status);
+                    } else {
+                        $consoleCommand->error("Unknown state provided: " . $grooveTicket['state']);
+                    }
 
                     // CreatedBy is a PersonRef - type must be 'user' for messages or notes
                     // Type must be 'customer' for customer threads
@@ -186,8 +184,10 @@ class TicketProcessor implements ProcessorInterface
                             // the customer could be blank - we need to fetch extra details from Groove
                             // perhaps the sync-customers was not run?
                             $consoleCommand->warn('Could not find HelpScout customer for ' . $authorEmailAddress . '. Was sync-customers command run?');
-                            $grooveCustomer = $consoleCommand->makeRateLimitedRequest(function () use ($consoleCommand, $authorEmailAddress) {
-                                return $consoleCommand->getGrooveClient()->customers()->searchCustomersByEmail($authorEmailAddress);
+                            $grooveCustomer = $consoleCommand->makeRateLimitedRequest(function () use ($consoleCommand, $grooveMessage) {
+                                $url = $grooveMessage['links']['author']['href'] . '?access_token=' . config('services.groove.key');
+                                $jsonData = json_decode(file_get_contents($url), true);
+                                return $jsonData['customer'];
                             }, null, GROOVE);
                             list($firstName, $lastName) = APIHelper::extractFirstAndLastNameFromFullName($grooveCustomer['name']);
                             $personRef->setFirstName($firstName);
@@ -202,11 +202,6 @@ class TicketProcessor implements ProcessorInterface
                     $personRef->setType($grooveMessage['note'] ? 'user' : 'customer');
                     $personRef->setEmail($authorEmailAddress);
                     $personRef->setId($id);
-                    $personRef = new PersonRef((object) array(
-                        'type' => ($grooveMessage['note'] ? 'user' : 'customer'),
-                        'email' => $authorEmailAddress,
-                        'id' => $id
-                    ));
                     $thread->setCreatedBy($personRef);
 
                     // To field
@@ -281,6 +276,10 @@ class TicketProcessor implements ProcessorInterface
         }, null, GROOVE);
 
         foreach($attachments as $grooveAttachment) {
+            // Attachments: attachments must be sent to the API before they can
+            // be used when creating a thread. Use the hash value returned when
+            // creating the attachment to associate it with a ticket.
+            $consoleCommand->progressBar->setMessage('Attachment ' . $grooveAttachment['filename'] . ' found. Uploading to HelpScout...');
             $helpscoutAttachment = new Attachment();
             $helpscoutAttachment->setFileName($grooveAttachment['filename']);
 
@@ -289,7 +288,16 @@ class TicketProcessor implements ProcessorInterface
             $mimeType = $finfo->buffer($buffer);
 
             $helpscoutAttachment->setMimeType($mimeType);
-            $helpscoutAttachment->setData($buffer);
+            $helpscoutAttachment->setData(base64_encode($buffer));
+
+            $consoleCommand->makeRateLimitedRequest(function () use ($consoleCommand, $helpscoutAttachment) {
+                $consoleCommand->getHelpScoutClient()->createAttachment($helpscoutAttachment);
+            }, null, GROOVE);
+
+            // hash should be programmatically be set now
+            $helpscoutAttachment->setData(null);
+            $consoleCommand->progressBar->setMessage(str_pad(' ', 60));
+
             $helpscoutAttachments []= $helpscoutAttachment;
         }
 
