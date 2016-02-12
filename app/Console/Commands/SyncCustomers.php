@@ -44,11 +44,12 @@ class SyncCustomers extends SyncCommandBase
         $customersService = $this->getGrooveClient()->customers();
 
         $grooveCustomersCountResponse = $this->makeRateLimitedRequest(
+            GROOVE,
             function () use ($customersService) {
                 return $customersService->list(['page' => 1, 'per_page' => 1])['meta'];
             },
             null,
-            GROOVE);
+            null);
         $totalCustomers = $grooveCustomersCountResponse['pagination']['total_count'];
 
         $this->createProgressBar($totalCustomers);
@@ -56,14 +57,13 @@ class SyncCustomers extends SyncCommandBase
         $pageNumber = 1;
         $numberCustomers = 0;
 
-        // TODO: for performance, we should upload immediately so we can continue at a given page number
         do {
             $grooveCustomersListResponse = $this->makeRateLimitedRequest(
+                GROOVE,
                 function () use ($customersService, $pageNumber) {
                     return $customersService->list(['page' => $pageNumber, 'per_page' => 50])['customers'];
                 },
-                CustomerProcessor::getProcessor($this),
-                GROOVE);
+                CustomerProcessor::getProcessor($this), null);
             $this->progressBar->advance(count($grooveCustomersListResponse));
             $numberCustomers += count($grooveCustomersListResponse);
             $pageNumber++;
@@ -85,9 +85,9 @@ class SyncCustomers extends SyncCommandBase
                 $classname = explode('\\', get_class($model));
                 if (strcasecmp(end($classname), "Customer") === 0) {
                     $client = $this->getHelpScoutClient();
-                    $helpscoutCreateCustomerResponse = $this->makeRateLimitedRequest(function () use ($client, $model) {
+                    $helpscoutCreateCustomerResponse = $this->makeRateLimitedRequest(HELPSCOUT, function () use ($client, $model) {
                         $client->createCustomer($model);
-                    }, null, HELPSCOUT);
+                    }, null, null);
                 }
             } catch (ApiException $e) {
                 foreach ($e->getErrors() as $error) {

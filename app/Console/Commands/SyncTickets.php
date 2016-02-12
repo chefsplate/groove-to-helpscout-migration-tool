@@ -55,11 +55,10 @@ class SyncTickets extends SyncCommandBase
         $this->performInitialValidation();
 
         $grooveTicketsQueryResponse = $this->makeRateLimitedRequest(
+            GROOVE,
             function () use ($ticketsService) {
                 return $ticketsService->list(['page' => 1, 'per_page' => 1])['meta'];
-            },
-            null,
-            GROOVE);
+            }, null, null);
         $totalTickets = $grooveTicketsQueryResponse['pagination']['total_count'];
 
         $this->createProgressBar($totalTickets);
@@ -69,6 +68,7 @@ class SyncTickets extends SyncCommandBase
 
         do {
             $grooveTicketsResponse = $this->makeRateLimitedRequest(
+                GROOVE,
                 function () use ($ticketsService, $pageNumber) {
                     return $ticketsService->list(['page' => $pageNumber, 'per_page' => 5])['tickets'];
                 },
@@ -77,7 +77,8 @@ class SyncTickets extends SyncCommandBase
                     'mailboxesService' => $mailboxesService,
                     'customersService' => $customersService,
                     'agentsService' => $agentsService)),
-                GROOVE);
+                null
+            );
             $numberTickets += count($grooveTicketsResponse);
             $pageNumber++;
         } while (count($grooveTicketsResponse) > 0 && $pageNumber <= 1);
@@ -101,9 +102,9 @@ class SyncTickets extends SyncCommandBase
                 $classname = explode('\\', get_class($model));
                 if (strcasecmp(end($classname), "Conversation") === 0) {
                     $client = $this->getHelpScoutClient();
-                    $createConversationResponse = $this->makeRateLimitedRequest(function () use ($client, $model) {
+                    $createConversationResponse = $this->makeRateLimitedRequest(HELPSCOUT, function () use ($client, $model) {
                         $client->createConversation($model, true); // imported = true to prevent spam!
-                    }, null, HELPSCOUT);
+                    }, null, null);
                 }
             } catch (ApiException $e) {
                 if ($e->getErrors()) {
@@ -134,9 +135,9 @@ class SyncTickets extends SyncCommandBase
         // Validation check: Ensure each mailbox in Groove maps to a HelpScout mailbox
         $this->info("Validation check: ensuring each mailbox in Groove maps to a HelpScout mailbox");
 
-        $grooveMailboxes = $this->makeRateLimitedRequest(function () use ($mailboxesService) {
+        $grooveMailboxes = $this->makeRateLimitedRequest(GROOVE, function () use ($mailboxesService) {
             return $mailboxesService->mailboxes()['mailboxes'];
-        }, null, GROOVE);
+        }, null, null);
 
         $hasErrors = false;
 
@@ -152,9 +153,9 @@ class SyncTickets extends SyncCommandBase
 
         // Validation check: Ensure each agent has a corresponding user in HelpScout
         $this->info("\nValidation check: ensuring each Groove agent maps to a corresponding HelpScout user");
-        $grooveAgents = $this->makeRateLimitedRequest(function () use ($agentsService) {
+        $grooveAgents = $this->makeRateLimitedRequest(GROOVE, function () use ($agentsService) {
             return $agentsService->list()['agents'];
-        }, null, GROOVE);
+        }, null, null);
 
         foreach($grooveAgents as $grooveAgent) {
             $grooveAgentEmail = $grooveAgent['email'];

@@ -83,9 +83,12 @@ class TicketProcessor implements ProcessorInterface
                             $conversation->setCreatedBy($helpscoutPersonRef);
                         } else {
                             $customersService = $servicesMapping['customersService'];
-                            $grooveCustomer = $consoleCommand->makeRateLimitedRequest(function () use ($customersService, $customerEmail) {
-                                return $customersService->find(['customer_email' => $customerEmail])['customer'];
-                            }, null, GROOVE);
+                            $grooveCustomer = $consoleCommand->makeRateLimitedRequest(GROOVE,
+                                function () use ($customersService, $customerEmail) {
+                                    return $customersService->find(['customer_email' => $customerEmail])['customer'];
+                                },
+                                null,
+                                null);
                             $helpscoutPersonRef = new PersonRef((object) array('email' => $grooveCustomer['email'], 'type' => 'customer'));
                             $conversation->setCustomer($helpscoutPersonRef);
                             $conversation->setCreatedBy($helpscoutPersonRef);
@@ -147,9 +150,12 @@ class TicketProcessor implements ProcessorInterface
         try {
             do {
                 /* @var $grooveMessages array */
-                $grooveMessages = $consoleCommand->makeRateLimitedRequest(function () use ($consoleCommand, $pageNumber, $messagesService, $grooveTicket) {
-                    return $messagesService->list(['page' => $pageNumber, 'per_page' => 50, 'ticket_number' => $grooveTicket['number']]);
-                }, null, GROOVE);
+                $grooveMessages = $consoleCommand->makeRateLimitedRequest(GROOVE,
+                    function () use ($consoleCommand, $pageNumber, $messagesService, $grooveTicket) {
+                        return $messagesService->list(['page' => $pageNumber, 'per_page' => 50, 'ticket_number' => $grooveTicket['number']]);
+                    },
+                    null,
+                    null);
 
                 foreach($grooveMessages['messages'] as $grooveMessage) {
                     /* @var $thread AbstractThread */
@@ -175,9 +181,12 @@ class TicketProcessor implements ProcessorInterface
                     $personRef = new PersonRef();
                     if (strcasecmp($addressType, 'customer') === 0) {
                         /* @var $response Collection */
-                        $helpscoutCustomer = $consoleCommand->makeRateLimitedRequest(function () use ($consoleCommand, $authorEmailAddress) {
-                            return $consoleCommand->getHelpScoutClient()->searchCustomersByEmail($authorEmailAddress);
-                        }, null, HELPSCOUT);
+                        $helpscoutCustomer = $consoleCommand->makeRateLimitedRequest(HELPSCOUT,
+                            function () use ($consoleCommand, $authorEmailAddress) {
+                                return $consoleCommand->getHelpScoutClient()->searchCustomersByEmail($authorEmailAddress);
+                            },
+                            null,
+                            null);
                         if ($helpscoutCustomer->getCount() > 0) {
                             /* @var $firstItem \HelpScout\model\Customer */
                             $firstItem = $helpscoutCustomer->getItems()[0];
@@ -186,9 +195,13 @@ class TicketProcessor implements ProcessorInterface
                             // the customer could be blank - we need to fetch extra details from Groove
                             // perhaps the sync-customers was not run?
                             $consoleCommand->warn('Could not find HelpScout customer for ' . $authorEmailAddress . '. Was sync-customers command run?');
-                            $grooveCustomer = $consoleCommand->makeRateLimitedRequest(function () use ($consoleCommand, $authorEmailAddress) {
-                                return $consoleCommand->getGrooveClient()->customers()->searchCustomersByEmail($authorEmailAddress);
-                            }, null, GROOVE);
+                            $grooveCustomer = $consoleCommand->makeRateLimitedRequest(
+                                GROOVE,
+                                function () use ($consoleCommand, $authorEmailAddress) {
+                                    return $consoleCommand->getGrooveClient()->customers()->searchCustomersByEmail($authorEmailAddress);
+                                },
+                                null,
+                                null);
                             list($firstName, $lastName) = APIHelper::extractFirstAndLastNameFromFullName($grooveCustomer['name']);
                             $personRef->setFirstName($firstName);
                             $personRef->setLastName($lastName);
@@ -276,9 +289,12 @@ class TicketProcessor implements ProcessorInterface
             return $helpscoutAttachments;
         }
 
-        $attachments = $consoleCommand->makeRateLimitedRequest(function () use ($consoleCommand, $messagesService, $grooveMessageId) {
-            return $messagesService->attachments(['message' => $grooveMessageId])['attachments'];
-        }, null, GROOVE);
+        $attachments = $consoleCommand->makeRateLimitedRequest(GROOVE,
+            function () use ($consoleCommand, $messagesService, $grooveMessageId) {
+                return $messagesService->attachments(['message' => $grooveMessageId])['attachments'];
+            },
+            null,
+            null);
 
         foreach($attachments as $grooveAttachment) {
             $helpscoutAttachment = new Attachment();

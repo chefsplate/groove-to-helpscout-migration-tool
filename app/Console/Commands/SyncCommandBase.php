@@ -97,15 +97,22 @@ class SyncCommandBase extends Command
     }
 
     /**
-     * TODO document this method
+     * TODO change interface to method passing in configuration object (which is validated)
      *
-     * @param $requestFunction
-     * @param callable $processFunction
-     * @param callable $publishFunction function will be responsible for popping elements from the upload queue
+     * Perform a rate-limited API call. The flow is:
+     * 1. requestFunction()
+     * 2. processFunction() based on requestFunction result
+     * 3. publishFunction() based on processFunction result
+     *
+     * Only requestFunction() and serviceName are required fields.
+     *
      * @param $serviceName
+     * @param callable $requestFunction should return a list for processing
+     * @param callable $processFunction must return a list of models for publishing
+     * @param callable $publishFunction method to upload models; responsible for handling publication failures
      * @return mixed
      */
-    public function makeRateLimitedRequest($requestFunction, $processFunction = null, $publishFunction = null, $serviceName) {
+    public function makeRateLimitedRequest($serviceName, $requestFunction, $processFunction = null, $publishFunction = null) {
         $rateLimit = self::$rate_limits[$serviceName];
         if (SyncCommandBase::$requests_processed_this_minute[$serviceName] >= $rateLimit) {
             $seconds_to_sleep = 60 - (time() - SyncCommandBase::$start_of_minute_timestamp[$serviceName]);
@@ -123,16 +130,16 @@ class SyncCommandBase extends Command
         }
         $response = $requestFunction();
         SyncCommandBase::$requests_processed_this_minute[$serviceName]++;
-        // TODO: refactor processFunction - it should be responsible for adding to the queue
         if ($processFunction != null) {
             /** @var callable $processFunction */
-            $this->addToQueue($processFunction($response));
+            $processedModels = $processFunction($response);
+
+            if ($publishFunction != null) {
+                /** @var callable $publishFunction */
+                $publishFunction($processedModels);
+            }
         } else {
             // don't do anything
-        }
-        if ($publishFunction != null) {
-            /** @var callable $publishFunction */
-            $publishFunction($this->uploadQueue);
         }
         return $response;
     }

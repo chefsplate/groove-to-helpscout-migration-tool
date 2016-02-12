@@ -50,9 +50,9 @@ class APIHelper
             do {
                 $consoleCommand = self::$consoleCommand;
                 /* @var $helpscoutMailboxesResponse Collection */
-                $helpscoutMailboxesResponse = self::$consoleCommand->makeRateLimitedRequest(function () use ($consoleCommand, $pageNumber) {
+                $helpscoutMailboxesResponse = self::$consoleCommand->makeRateLimitedRequest(HELPSCOUT, function () use ($consoleCommand, $pageNumber) {
                     return $consoleCommand->getHelpScoutClient()->getMailboxes(['page' => $pageNumber]);
-                }, null, HELPSCOUT);
+                }, null, null);
                 $cumulativeHelpscoutMailboxes = array_merge($cumulativeHelpscoutMailboxes, $helpscoutMailboxesResponse->getItems());
                 $pageNumber++;
             } while ($helpscoutMailboxesResponse->hasNextPage());
@@ -87,9 +87,12 @@ class APIHelper
                 $consoleCommand = self::$consoleCommand;
 
                 /* @var $helpscoutUsersResponse Collection */
-                $helpscoutUsersResponse = self::$consoleCommand->makeRateLimitedRequest(function () use ($consoleCommand, $pageNumber) {
-                    return $consoleCommand->getHelpScoutClient()->getUsers(['page' => $pageNumber]);
-                }, null, HELPSCOUT);
+                $helpscoutUsersResponse = self::$consoleCommand->makeRateLimitedRequest(HELPSCOUT,
+                    function () use ($consoleCommand, $pageNumber) {
+                        return $consoleCommand->getHelpScoutClient()->getUsers(['page' => $pageNumber]);
+                    },
+                    null,
+                    null);
                 $cumulativeHelpscoutUsers = array_merge($cumulativeHelpscoutUsers, $helpscoutUsersResponse->getItems());
                 $pageNumber++;
             } while ($helpscoutUsersResponse->hasNextPage());
