@@ -46,8 +46,10 @@ class TicketPublisher implements PublisherInterface
             $consoleCommand->getProgressBar()->finish();
             $consoleCommand->info("\nCompleted uploading tickets to HelpScout.");
 
-            // TODO: output to a CSV instead
-            $consoleCommand->error(print_r($errorMapping, TRUE));
+            if (sizeof($errorMapping) > 0) {
+                // TODO: output to a CSV instead
+                $consoleCommand->error(print_r($errorMapping, TRUE));
+            }
         };
     }
 }

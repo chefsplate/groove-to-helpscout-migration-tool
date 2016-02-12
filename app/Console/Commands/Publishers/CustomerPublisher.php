@@ -37,8 +37,10 @@ class CustomerPublisher implements PublisherInterface
             }
             $consoleCommand->getProgressBar()->finish();
 
-            // TODO: output to a CSV instead
-            $consoleCommand->error(print_r($errorMapping, TRUE));
+            if (sizeof($errorMapping) > 0) {
+                // TODO: output to a CSV instead
+                $consoleCommand->error(print_r($errorMapping, TRUE));
+            }
         };
     }
 }
