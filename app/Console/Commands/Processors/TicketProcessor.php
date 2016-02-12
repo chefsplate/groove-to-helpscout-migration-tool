@@ -109,7 +109,6 @@ class TicketProcessor implements ProcessorInterface
                     }
 
                     $processedTickets [] = $conversation;
-                    $consoleCommand->getProgressBar()->advance();
                 } catch (ApiException $e) {
                     // TODO: output this to console instead of dumping
                     echo $e->getMessage();
@@ -281,7 +280,7 @@ class TicketProcessor implements ProcessorInterface
             // Attachments: attachments must be sent to the API before they can
             // be used when creating a thread. Use the hash value returned when
             // creating the attachment to associate it with a ticket.
-            $consoleCommand->getProgressBar()->setMessage('Attachment ' . $grooveAttachment['filename'] . ' found. Uploading to HelpScout...');
+            $consoleCommand->info('Attachment ' . $grooveAttachment['filename'] . ' found. Uploading to HelpScout...');
             $helpscoutAttachment = new Attachment();
             $helpscoutAttachment->setFileName($grooveAttachment['filename']);
 
@@ -299,7 +298,6 @@ class TicketProcessor implements ProcessorInterface
 
             // hash should be programmatically be set now
             $helpscoutAttachment->setData(null);
-            $consoleCommand->getProgressBar()->setMessage(str_pad(' ', 60));
 
             $helpscoutAttachments []= $helpscoutAttachment;
         }
