@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Console\Commands\Processors\TicketProcessor;
-use HelpScout\ApiException;
+use App\Console\Commands\Publishers\TicketPublisher;
 
 class SyncTickets extends SyncCommandBase
 {
@@ -77,7 +77,7 @@ class SyncTickets extends SyncCommandBase
                     'mailboxesService' => $mailboxesService,
                     'customersService' => $customersService,
                     'agentsService' => $agentsService)),
-                null
+                TicketPublisher::getPublisher($this)
             );
             $numberTickets += count($grooveTicketsResponse);
             $pageNumber++;
@@ -85,46 +85,7 @@ class SyncTickets extends SyncCommandBase
 
         $this->progressBar->finish();
 
-        $this->info("\nCompleted fetching $numberTickets tickets.");
-
-        // Publish/create tickets
-        // ----------------------
-
-        $errorMapping = array();
-
-        $this->info("Uploading tickets to HelpScout...");
-
-        $this->createProgressBar(count($this->uploadQueue));
-
-        /* @var $model \HelpScout\model\Conversation */
-        foreach ($this->uploadQueue as $model) {
-            try {
-                $classname = explode('\\', get_class($model));
-                if (strcasecmp(end($classname), "Conversation") === 0) {
-                    $client = $this->getHelpScoutClient();
-                    $createConversationResponse = $this->makeRateLimitedRequest(HELPSCOUT, function () use ($client, $model) {
-                        $client->createConversation($model, true); // imported = true to prevent spam!
-                    }, null, null);
-                }
-            } catch (ApiException $e) {
-                if ($e->getErrors()) {
-                    foreach ($e->getErrors() as $error) {
-                        $errorMapping[$error['message']] [] = $error;
-                        $this->progressBar->setMessage('Error: [' . $error['property'] . '] ' . $error['message'] . ' (' . $error['value'] . ')' . str_pad(' ', 20));
-                    }
-                } else {
-                    $errorMapping[$e->getMessage()] []= "[" . $model->getCreatedAt()->format('c') . "] " . $model->getSubject();
-                }
-
-            }
-            $this->progressBar->advance();
-        }
-        $this->progressBar->finish();
-        $this->info("\nCompleted uploading tickets to HelpScout.");
-
-        // TODO: output to a CSV instead
-        $this->error(print_r($errorMapping, TRUE));
-
+        $this->info("\nCompleted migrating $numberTickets tickets.");
     }
 
     private function performInitialValidation()

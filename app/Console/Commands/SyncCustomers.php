@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Console\Commands\Processors\CustomerProcessor;
-use HelpScout\ApiException;
+use App\Console\Commands\Publishers\CustomerPublisher;
 
 class SyncCustomers extends SyncCommandBase
 {
@@ -63,7 +63,8 @@ class SyncCustomers extends SyncCommandBase
                 function () use ($customersService, $pageNumber) {
                     return $customersService->list(['page' => $pageNumber, 'per_page' => 50])['customers'];
                 },
-                CustomerProcessor::getProcessor($this), null);
+                CustomerProcessor::getProcessor($this),
+                CustomerPublisher::getPublisher($this));
             $this->progressBar->advance(count($grooveCustomersListResponse));
             $numberCustomers += count($grooveCustomersListResponse);
             $pageNumber++;
@@ -71,37 +72,7 @@ class SyncCustomers extends SyncCommandBase
 
         $this->progressBar->finish();
 
-        $this->info("\nCompleted fetching $numberCustomers customers.");
-
-        // Publish/create customers
-        // ------------------------
-
-        $errorMapping = array();
-
-        $this->createProgressBar(count($this->uploadQueue));
-
-        foreach ($this->uploadQueue as $model) {
-            try {
-                $classname = explode('\\', get_class($model));
-                if (strcasecmp(end($classname), "Customer") === 0) {
-                    $client = $this->getHelpScoutClient();
-                    $helpscoutCreateCustomerResponse = $this->makeRateLimitedRequest(HELPSCOUT, function () use ($client, $model) {
-                        $client->createCustomer($model);
-                    }, null, null);
-                }
-            } catch (ApiException $e) {
-                foreach ($e->getErrors() as $error) {
-                    $errorMapping[$error['message']] [] = "[" . $error['property'] . "] " . $error['message'] . ": " . $error['value'];
-                    $this->progressBar->setMessage('Error: [' . $error['property']. '] ' . $error['message'] . ' (' . $error['value'] . ')' . str_pad(' ', 20));
-                }
-            }
-            $this->progressBar->advance();
-        }
-        $this->progressBar->finish();
-
-        // TODO: output to a CSV instead
-        $this->error(print_r($errorMapping, TRUE));
-
+        $this->info("\nCompleted migrating $numberCustomers customers.");
     }
 
 }
