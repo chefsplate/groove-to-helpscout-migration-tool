@@ -33,7 +33,8 @@ email addresses with HelpScout user emails and Groove mailboxes to HelpScout mai
 ### CLI Usage
 
 Run `php artisan sync-customers` in the root of the Laravel project. Customers come first, as the process of creating conversations may create a new customer.
-Once that succeeds, run: `php artisan sync-tickets` and `php artisan sync-attachments`.
+
+Once that succeeds, run: `php artisan sync-tickets`.
 
 ## Notes
 
@@ -76,12 +77,11 @@ For help moving from Zendesk, Desk or UserVoice, check out the [HelpScout knowle
 The tool currently does not perform:
 
 - Restarting only failed migration tasks
-- Start process again after failed or timed out migration
+- Starting process again after failed or timed out migration; restarting from a given page number/ID/timestamp
 - Export CSV of imports with issues
 
 ## Challenges
 
-Long-running process (may take hours; batches may fail anytime).
-Queueing several jobs while adhering to API rate limit. 
-Monitoring on the front-end. 
-Start the job then how do you tell what has been finished, and which ones failed?
+- Long-running process (may take hours; batches may fail anytime).
+- Queueing several jobs while adhering to API rate limit. 
+- Monitoring on the front-end. How do you tell which objects have been successfully migrated and which ones failed?
