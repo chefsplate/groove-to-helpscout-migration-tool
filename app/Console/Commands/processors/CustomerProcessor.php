@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands\Processors;
 use App\Console\Commands\APIHelper;
+use Closure;
 use HelpScout\ApiException;
 use HelpScout\model\Customer;
 use HelpScout\model\customer\EmailEntry;
@@ -19,10 +20,9 @@ class CustomerProcessor implements ProcessorInterface
 {
     /**
      * @param null $consoleCommand
-     * @param null $servicesMapping
      * @return Closure
      */
-    public static function getProcessor($consoleCommand = null, $servicesMapping = null)
+    public static function getProcessor($consoleCommand = null)
     {
         /**
          * @param $customers_list

@@ -10,18 +10,33 @@ use Symfony\Component\Console\Helper\ProgressBar;
 
 class SyncCommandBase extends Command
 {
-    public static $requests_processed_this_minute = 0;
-    public static $start_of_minute_timestamp = 0;
+    // TODO: convert following static fields to an object (so we won't be able to assign array to something else)
+    /**
+     * @var $requests_processed_this_minute array
+     */
+    private static $requests_processed_this_minute = array(
+        GROOVE => 0,
+        HELPSCOUT => 0
+    );
+    /**
+     * @var $start_of_minute_timestamp array
+     */
+    private static $start_of_minute_timestamp = array(
+        GROOVE => 0,
+        HELPSCOUT => 0
+    );
+    /**
+     * @var $rate_limits array
+     */
+    private static $rate_limits = array();
 
-    public $uploadQueue = array();
-
-    protected $grooveClient;
-    protected $helpscoutClient;
+    private $grooveClient;
+    private $helpscoutClient;
 
     /**
      * @var ProgressBar
      */
-    public $progressBar;
+    protected $progressBar;
 
     public function __construct()
     {
@@ -38,6 +53,9 @@ class SyncCommandBase extends Command
             $this->error(print_r($e->getErrors(), TRUE));
             return;
         }
+
+        $rate_limits[GROOVE] = config('services.groove.ratelimit');
+        $rate_limits[HELPSCOUT] = config('services.helpscout.ratelimit');
     }
 
     public function createProgressBar($total_units)
@@ -55,6 +73,13 @@ class SyncCommandBase extends Command
     }
 
     /**
+     * @return ProgressBar
+     */
+    public function getProgressBar() {
+        return $this->progressBar;
+    }
+
+    /**
      * @return GrooveClient
      */
     public function getGrooveClient()
@@ -62,45 +87,48 @@ class SyncCommandBase extends Command
         return $this->grooveClient;
     }
 
-    function addToQueue($jobs_list) {
-        $this->uploadQueue = array_merge($this->uploadQueue, $jobs_list);
-    }
-
     /**
-     * TODO document this method
-     * TODO support tracking of calls to each service for rate limiting
+     * TODO change interface to method passing in configuration object (which is validated)
      *
-     * @param $requestFunction
-     * @param null $processFunction
+     * Perform a rate-limited API call. The flow is:
+     * 1. requestFunction()
+     * 2. processFunction() based on requestFunction result
+     * 3. publishFunction() based on processFunction result
+     *
+     * Only requestFunction() and serviceName are required fields.
+     *
      * @param $serviceName
+     * @param callable $requestFunction should return a list for processing
+     * @param callable $processFunction must return a list of models for publishing
+     * @param callable $publishFunction method to upload models; responsible for handling publication failures
      * @return mixed
      */
-    public function makeRateLimitedRequest($requestFunction, $processFunction = null, $serviceName) {
-        if (strcasecmp($serviceName, GROOVE)) {
-            $rateLimit = config('services.groove.ratelimit');
-        } else {
-            $rateLimit = config('services.helpscout.ratelimit');
-        }
-        if (SyncCommandBase::$requests_processed_this_minute >= $rateLimit) {
-            $seconds_to_sleep = 60 - (time() - SyncCommandBase::$start_of_minute_timestamp);
+    public function makeRateLimitedRequest($serviceName, $requestFunction, $processFunction = null, $publishFunction = null) {
+        $rateLimit = self::$rate_limits[$serviceName];
+        if (SyncCommandBase::$requests_processed_this_minute[$serviceName] >= $rateLimit) {
+            $seconds_to_sleep = 60 - (time() - SyncCommandBase::$start_of_minute_timestamp[$serviceName]);
             if ($seconds_to_sleep > 0) {
                 $this->progressBar->setMessage("Rate limit reached. Waiting $seconds_to_sleep seconds.");
                 $this->progressBar->display();
                 sleep($seconds_to_sleep);
                 $this->progressBar->setMessage("");
             }
-            SyncCommandBase::$start_of_minute_timestamp = time();
-            SyncCommandBase::$requests_processed_this_minute = 0;
-        } elseif (time() - SyncCommandBase::$start_of_minute_timestamp > 60) {
-            SyncCommandBase::$start_of_minute_timestamp = time();
-            SyncCommandBase::$requests_processed_this_minute = 0;
+            SyncCommandBase::$start_of_minute_timestamp[$serviceName] = time();
+            SyncCommandBase::$requests_processed_this_minute[$serviceName] = 0;
+        } elseif (time() - SyncCommandBase::$start_of_minute_timestamp[$serviceName] > 60) {
+            SyncCommandBase::$start_of_minute_timestamp[$serviceName] = time();
+            SyncCommandBase::$requests_processed_this_minute[$serviceName] = 0;
         }
         $response = $requestFunction();
-        SyncCommandBase::$requests_processed_this_minute++;
-        // TODO: refactor processFunction - it should be responsible for adding to the queue
+        SyncCommandBase::$requests_processed_this_minute[$serviceName]++;
         if ($processFunction != null) {
             /** @var callable $processFunction */
-            $this->addToQueue($processFunction($response));
+            $processedModels = $processFunction($response);
+
+            if ($publishFunction != null) {
+                /** @var callable $publishFunction */
+                $publishFunction($processedModels);
+            }
         } else {
             // don't do anything
         }
