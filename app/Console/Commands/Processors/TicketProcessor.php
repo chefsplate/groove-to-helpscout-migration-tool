@@ -5,6 +5,7 @@ namespace App\Console\Commands\Processors;
 use App\Console\Commands\APIHelper;
 use App\Console\Commands\Processors\Exceptions\ValidationException;
 use App\Console\Commands\SyncCommandBase;
+use DateTime;
 use finfo;
 use HelpScout\ApiException;
 use HelpScout\Collection;
@@ -94,9 +95,9 @@ class TicketProcessor implements ProcessorInterface
                         throw new ApiException("No customer defined for ticket: " . $grooveTicket['number']);
                     }
 
-                    // FIXME why can't we programmatically set this??
                     // CreatedAt
-//                    $conversation->setCreatedAt(new DateTime($grooveTicket['created_at']));
+                    $datetime = new DateTime($grooveTicket['created_at']);
+                    $conversation->setCreatedAt($datetime->format('c'));
 
                     $conversation->setThreads(self::retrieveThreadsForGrooveTicket($consoleCommand, $grooveTicket));
 
@@ -149,8 +150,8 @@ class TicketProcessor implements ProcessorInterface
                         $thread->setType('customer');
                     }
                     $thread->setBody($grooveMessage['body']);
-                    // FIXME why can't we programmatically set this??
-//                    $thread->setCreatedAt(new DateTime($grooveMessage['created_at']));
+                    $datetime = new DateTime($grooveMessage['created_at']);
+                    $thread->setCreatedAt($datetime->format('c'));
 
                     // There is no particular status for a single message in Groove
                     // Assume the status is the same as the ticket's
