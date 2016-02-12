@@ -10,8 +10,25 @@ use Symfony\Component\Console\Helper\ProgressBar;
 
 class SyncCommandBase extends Command
 {
-    public static $requests_processed_this_minute = 0;
-    public static $start_of_minute_timestamp = 0;
+    // TODO: convert following static fields to an object (so we won't be able to assign array to something else)
+    /**
+     * @var $requests_processed_this_minute array
+     */
+    public static $requests_processed_this_minute = array(
+        GROOVE => 0,
+        HELPSCOUT => 0
+    );
+    /**
+     * @var $start_of_minute_timestamp array
+     */
+    public static $start_of_minute_timestamp = array(
+        GROOVE => 0,
+        HELPSCOUT => 0
+    );
+    /**
+     * @var $rate_limits array
+     */
+    public static $rate_limits = array();
 
     public $uploadQueue = array();
 
@@ -38,6 +55,9 @@ class SyncCommandBase extends Command
             $this->error(print_r($e->getErrors(), TRUE));
             return;
         }
+
+        $rate_limits[GROOVE] = config('services.groove.ratelimit');
+        $rate_limits[HELPSCOUT] = config('services.helpscout.ratelimit');
     }
 
     public function createProgressBar($total_units)
@@ -76,27 +96,23 @@ class SyncCommandBase extends Command
      * @return mixed
      */
     public function makeRateLimitedRequest($requestFunction, $processFunction = null, $serviceName) {
-        if (strcasecmp($serviceName, GROOVE)) {
-            $rateLimit = config('services.groove.ratelimit');
-        } else {
-            $rateLimit = config('services.helpscout.ratelimit');
-        }
-        if (SyncCommandBase::$requests_processed_this_minute >= $rateLimit) {
-            $seconds_to_sleep = 60 - (time() - SyncCommandBase::$start_of_minute_timestamp);
+        $rateLimit = self::$rate_limits[$serviceName];
+        if (SyncCommandBase::$requests_processed_this_minute[$serviceName] >= $rateLimit) {
+            $seconds_to_sleep = 60 - (time() - SyncCommandBase::$start_of_minute_timestamp[$serviceName]);
             if ($seconds_to_sleep > 0) {
                 $this->progressBar->setMessage("Rate limit reached. Waiting $seconds_to_sleep seconds.");
                 $this->progressBar->display();
                 sleep($seconds_to_sleep);
                 $this->progressBar->setMessage("");
             }
-            SyncCommandBase::$start_of_minute_timestamp = time();
-            SyncCommandBase::$requests_processed_this_minute = 0;
-        } elseif (time() - SyncCommandBase::$start_of_minute_timestamp > 60) {
-            SyncCommandBase::$start_of_minute_timestamp = time();
-            SyncCommandBase::$requests_processed_this_minute = 0;
+            SyncCommandBase::$start_of_minute_timestamp[$serviceName] = time();
+            SyncCommandBase::$requests_processed_this_minute[$serviceName] = 0;
+        } elseif (time() - SyncCommandBase::$start_of_minute_timestamp[$serviceName] > 60) {
+            SyncCommandBase::$start_of_minute_timestamp[$serviceName] = time();
+            SyncCommandBase::$requests_processed_this_minute[$serviceName] = 0;
         }
         $response = $requestFunction();
-        SyncCommandBase::$requests_processed_this_minute++;
+        SyncCommandBase::$requests_processed_this_minute[$serviceName]++;
         // TODO: refactor processFunction - it should be responsible for adding to the queue
         if ($processFunction != null) {
             /** @var callable $processFunction */
