@@ -41,7 +41,7 @@ class SyncCustomers extends SyncCommandBase
         // Acquire and process
         // -------------------
 
-        $customersService = $this->grooveClient->customers();
+        $customersService = $this->getGrooveClient()->customers();
 
         $grooveCustomersCountResponse = $this->makeRateLimitedRequest(
             function () use ($customersService) {
@@ -84,7 +84,7 @@ class SyncCustomers extends SyncCommandBase
             try {
                 $classname = explode('\\', get_class($model));
                 if (strcasecmp(end($classname), "Customer") === 0) {
-                    $client = $this->helpscoutClient;
+                    $client = $this->getHelpScoutClient();
                     $helpscoutCreateCustomerResponse = $this->makeRateLimitedRequest(function () use ($client, $model) {
                         $client->createCustomer($model);
                     }, null, HELPSCOUT);

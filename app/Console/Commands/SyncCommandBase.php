@@ -14,31 +14,34 @@ class SyncCommandBase extends Command
     /**
      * @var $requests_processed_this_minute array
      */
-    public static $requests_processed_this_minute = array(
+    private static $requests_processed_this_minute = array(
         GROOVE => 0,
         HELPSCOUT => 0
     );
     /**
      * @var $start_of_minute_timestamp array
      */
-    public static $start_of_minute_timestamp = array(
+    private static $start_of_minute_timestamp = array(
         GROOVE => 0,
         HELPSCOUT => 0
     );
     /**
      * @var $rate_limits array
      */
-    public static $rate_limits = array();
+    private static $rate_limits = array();
 
-    public $uploadQueue = array();
+    /**
+     * @var array $uploadQueue
+     */
+    protected $uploadQueue = array();
 
-    protected $grooveClient;
-    protected $helpscoutClient;
+    private $grooveClient;
+    private $helpscoutClient;
 
     /**
      * @var ProgressBar
      */
-    public $progressBar;
+    protected $progressBar;
 
     public function __construct()
     {
@@ -75,6 +78,13 @@ class SyncCommandBase extends Command
     }
 
     /**
+     * @return ProgressBar
+     */
+    public function getProgressBar() {
+        return $this->progressBar;
+    }
+
+    /**
      * @return GrooveClient
      */
     public function getGrooveClient()
@@ -88,14 +98,14 @@ class SyncCommandBase extends Command
 
     /**
      * TODO document this method
-     * TODO support tracking of calls to each service for rate limiting
      *
      * @param $requestFunction
-     * @param null $processFunction
+     * @param callable $processFunction
+     * @param callable $publishFunction function will be responsible for popping elements from the upload queue
      * @param $serviceName
      * @return mixed
      */
-    public function makeRateLimitedRequest($requestFunction, $processFunction = null, $serviceName) {
+    public function makeRateLimitedRequest($requestFunction, $processFunction = null, $publishFunction = null, $serviceName) {
         $rateLimit = self::$rate_limits[$serviceName];
         if (SyncCommandBase::$requests_processed_this_minute[$serviceName] >= $rateLimit) {
             $seconds_to_sleep = 60 - (time() - SyncCommandBase::$start_of_minute_timestamp[$serviceName]);
@@ -119,6 +129,10 @@ class SyncCommandBase extends Command
             $this->addToQueue($processFunction($response));
         } else {
             // don't do anything
+        }
+        if ($publishFunction != null) {
+            /** @var callable $publishFunction */
+            $publishFunction($this->uploadQueue);
         }
         return $response;
     }

@@ -120,7 +120,7 @@ class TicketProcessor implements ProcessorInterface
                     }
 
                     $processedTickets [] = $conversation;
-                    $consoleCommand->progressBar->advance();
+                    $consoleCommand->getProgressBar()->advance();
                 } catch (ApiException $e) {
                     // TODO: output this to console instead of dumping
                     echo $e->getMessage();

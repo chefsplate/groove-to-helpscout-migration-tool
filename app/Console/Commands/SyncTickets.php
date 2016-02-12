@@ -45,11 +45,11 @@ class SyncTickets extends SyncCommandBase
         // -------------------
 
         // TODO: refactor into base command - get rid of mapping
-        $ticketsService = $this->grooveClient->tickets();
-        $messagesService = $this->grooveClient->messages();
-        $customersService = $this->grooveClient->customers();
-        $agentsService = $this->grooveClient->agents();
-        $mailboxesService = $this->grooveClient->mailboxes();
+        $ticketsService = $this->getGrooveClient()->tickets();
+        $messagesService = $this->getGrooveClient()->messages();
+        $customersService = $this->getGrooveClient()->customers();
+        $agentsService = $this->getGrooveClient()->agents();
+        $mailboxesService = $this->getGrooveClient()->mailboxes();
 
         // Initial validation
         $this->performInitialValidation();
@@ -100,7 +100,7 @@ class SyncTickets extends SyncCommandBase
             try {
                 $classname = explode('\\', get_class($model));
                 if (strcasecmp(end($classname), "Conversation") === 0) {
-                    $client = $this->helpscoutClient;
+                    $client = $this->getHelpScoutClient();
                     $createConversationResponse = $this->makeRateLimitedRequest(function () use ($client, $model) {
                         $client->createConversation($model, true); // imported = true to prevent spam!
                     }, null, HELPSCOUT);
@@ -128,8 +128,8 @@ class SyncTickets extends SyncCommandBase
 
     private function performInitialValidation()
     {
-        $mailboxesService = $this->grooveClient->mailboxes();
-        $agentsService = $this->grooveClient->agents();
+        $mailboxesService = $this->getGrooveClient()->mailboxes();
+        $agentsService = $this->getGrooveClient()->agents();
 
         // Validation check: Ensure each mailbox in Groove maps to a HelpScout mailbox
         $this->info("Validation check: ensuring each mailbox in Groove maps to a HelpScout mailbox");
