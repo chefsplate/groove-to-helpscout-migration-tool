@@ -37,7 +37,18 @@ class TicketPublisher implements PublisherInterface
                     } else {
                         $errorMapping[$e->getMessage()] [] = "[" . $conversation->getCreatedAt()->format('c') . "] " . $conversation->getSubject();
                     }
-
+                } catch (\CurlException $ce) {
+                    $errorMessage = "CurlException encountered for ticket \"" . $conversation->getSubject() . "\" (created by " . $conversation->getCreatedBy()->getEmail() . " at " . $conversation->getCreatedAt() . ")";
+                    $consoleCommand->error($errorMessage . ": " . $ce->getMessage());
+                    $errorMapping[$ce->getMessage()] []= $errorMessage;
+                } catch (\ErrorException $errex) {
+                    $errorMessage = "Exception encountered for ticket \"" . $conversation->getSubject() . "\" (created by " . $conversation->getCreatedBy()->getEmail() . " at " . $conversation->getCreatedAt() . ")";
+                    $consoleCommand->error($errorMessage . ": " . $errex->getMessage());
+                    $errorMapping[$errex->getMessage()] []= $errorMessage;
+                } catch (\Exception $ex) {
+                    $errorMessage = "Exception encountered for ticket \"" . $conversation->getSubject() . "\" (created by " . $conversation->getCreatedBy()->getEmail() . " at " . $conversation->getCreatedAt() . ")";
+                    $consoleCommand->error($errorMessage . ": " . $ex->getMessage());
+                    $errorMapping[$ex->getMessage()] []= $errorMessage;
                 }
                 $consoleCommand->getProgressBar()->advance();
             }

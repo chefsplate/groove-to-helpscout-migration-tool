@@ -52,7 +52,7 @@ class SyncTickets extends SyncCommandBase
         $grooveTicketsQueryResponse = $this->makeRateLimitedRequest(
             GROOVE,
             function () use ($ticketsService) {
-                return $ticketsService->list(['page' => 1, 'per_page' => 1])['meta'];
+                return $ticketsService->list(['page' => 1, 'per_page' => 10])['meta'];
             });
         $totalTickets = $grooveTicketsQueryResponse['pagination']['total_count'];
         $totalPages = $grooveTicketsQueryResponse['pagination']['total_pages'];

@@ -113,6 +113,15 @@ class TicketProcessor implements ProcessorInterface
                     // TODO: output this to console instead of dumping
                     echo $e->getMessage();
                     print_r($e->getErrors());
+                } catch (\CurlException $ce) {
+                    $errorMessage = "CurlException encountered for ticket " . $grooveTicket['number'] . " \"" . $grooveTicket['summary'] . "\"";
+                    $consoleCommand->error($errorMessage . ": " . $ce->getMessage());
+                } catch (\ErrorException $errex) {
+                    $errorMessage = "Exception encountered for ticket " . $grooveTicket['number'] . " \"" . $grooveTicket['summary'] . "\"";
+                    $consoleCommand->error($errorMessage . ": " . $errex->getMessage());
+                } catch (\Exception $ex) {
+                    $errorMessage = "Exception encountered for ticket " . $grooveTicket['number'] . " \"" . $grooveTicket['summary'] . "\"";
+                    $consoleCommand->error($errorMessage . ": " . $ex->getMessage());
                 }
             }
             return $processedTickets;
