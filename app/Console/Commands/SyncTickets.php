@@ -44,12 +44,7 @@ class SyncTickets extends SyncCommandBase
         // Acquire and process
         // -------------------
 
-        // TODO: refactor into base command - get rid of mapping
         $ticketsService = $this->getGrooveClient()->tickets();
-        $messagesService = $this->getGrooveClient()->messages();
-        $customersService = $this->getGrooveClient()->customers();
-        $agentsService = $this->getGrooveClient()->agents();
-        $mailboxesService = $this->getGrooveClient()->mailboxes();
 
         // Initial validation
         $this->performInitialValidation();
@@ -72,11 +67,7 @@ class SyncTickets extends SyncCommandBase
                 function () use ($ticketsService, $pageNumber) {
                     return $ticketsService->list(['page' => $pageNumber, 'per_page' => 5])['tickets'];
                 },
-                TicketProcessor::getProcessor($this, array('ticketsService' => $ticketsService,
-                    'messagesService' => $messagesService,
-                    'mailboxesService' => $mailboxesService,
-                    'customersService' => $customersService,
-                    'agentsService' => $agentsService)),
+                TicketProcessor::getProcessor($this),
                 TicketPublisher::getPublisher($this)
             );
             $numberTickets += count($grooveTicketsResponse);

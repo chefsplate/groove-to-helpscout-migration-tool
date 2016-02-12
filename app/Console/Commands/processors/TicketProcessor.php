@@ -30,13 +30,13 @@ class TicketProcessor implements ProcessorInterface
      * @param array $servicesMapping
      * @return \Closure
      */
-    public static function getProcessor($consoleCommand, $servicesMapping)
+    public static function getProcessor($consoleCommand)
     {
         /**
          * @param $ticketsList
          * @return array
          */
-        return function ($ticketsList) use ($consoleCommand, $servicesMapping) {
+        return function ($ticketsList) use ($consoleCommand) {
             $processedTickets = array();
 
             foreach ($ticketsList as $grooveTicket) {
@@ -82,10 +82,9 @@ class TicketProcessor implements ProcessorInterface
                             $conversation->setCustomer($helpscoutPersonRef);
                             $conversation->setCreatedBy($helpscoutPersonRef);
                         } else {
-                            $customersService = $servicesMapping['customersService'];
                             $grooveCustomer = $consoleCommand->makeRateLimitedRequest(GROOVE,
-                                function () use ($customersService, $customerEmail) {
-                                    return $customersService->find(['customer_email' => $customerEmail])['customer'];
+                                function () use ($consoleCommand, $customerEmail) {
+                                    return $consoleCommand->getGrooveClient()->customers()->find(['customer_email' => $customerEmail])['customer'];
                                 },
                                 null,
                                 null);
@@ -101,7 +100,7 @@ class TicketProcessor implements ProcessorInterface
                     // CreatedAt
                     $conversation->setCreatedAt(new DateTime($grooveTicket['created_at']));
 
-                    $conversation->setThreads(self::retrieveThreadsForGrooveTicket($consoleCommand, $servicesMapping, $grooveTicket));
+                    $conversation->setThreads(self::retrieveThreadsForGrooveTicket($consoleCommand, $grooveTicket));
 
                     switch ($grooveTicket['state']) {
                         case 'unread':
@@ -136,23 +135,21 @@ class TicketProcessor implements ProcessorInterface
 
     /**
      * @param $consoleCommand SyncCommandBase
-     * @param $servicesMapping array
      * @param $grooveTicket array
      * @return array
      * @throws ValidationException
      * @internal param array $helpscoutUsers
      */
-    private static function retrieveThreadsForGrooveTicket($consoleCommand, $servicesMapping, $grooveTicket)
+    private static function retrieveThreadsForGrooveTicket($consoleCommand, $grooveTicket)
     {
         $pageNumber = 1;
         $helpscoutThreads = array();
-        $messagesService = $servicesMapping['messagesService'];
         try {
             do {
                 /* @var $grooveMessages array */
                 $grooveMessages = $consoleCommand->makeRateLimitedRequest(GROOVE,
-                    function () use ($consoleCommand, $pageNumber, $messagesService, $grooveTicket) {
-                        return $messagesService->list(['page' => $pageNumber, 'per_page' => 50, 'ticket_number' => $grooveTicket['number']]);
+                    function () use ($consoleCommand, $pageNumber, $grooveTicket) {
+                        return $consoleCommand->getGrooveClient()->messages()->list(['page' => $pageNumber, 'per_page' => 50, 'ticket_number' => $grooveTicket['number']]);
                     },
                     null,
                     null);
@@ -230,7 +227,7 @@ class TicketProcessor implements ProcessorInterface
                         }
                     }
 
-                    $thread->setAttachments(self::retrieveAttachmentsForGrooveMessage($consoleCommand, $servicesMapping, $grooveMessage));
+                    $thread->setAttachments(self::retrieveAttachmentsForGrooveMessage($consoleCommand, $grooveMessage));
 
                     $helpscoutThreads []= $thread;
                 }
@@ -267,17 +264,16 @@ class TicketProcessor implements ProcessorInterface
 
     /**
      * @param $consoleCommand SyncCommandBase
-     * @param $servicesMapping array
-     * @param $grooveTicket array
+     * @param $grooveMessage array
      * @return array
+     * @internal param array $grooveTicket
      */
-    private static function retrieveAttachmentsForGrooveMessage($consoleCommand, $servicesMapping, $grooveMessage)
+    private static function retrieveAttachmentsForGrooveMessage($consoleCommand, $grooveMessage)
     {
         if (!isset($grooveMessage['links']['attachments'])) {
             return null;
         }
 
-        $messagesService = $servicesMapping['messagesService'];
         $grooveMessageId = null;
         $matches = array();
         $helpscoutAttachments = array();
@@ -290,8 +286,8 @@ class TicketProcessor implements ProcessorInterface
         }
 
         $attachments = $consoleCommand->makeRateLimitedRequest(GROOVE,
-            function () use ($consoleCommand, $messagesService, $grooveMessageId) {
-                return $messagesService->attachments(['message' => $grooveMessageId])['attachments'];
+            function () use ($consoleCommand, $grooveMessageId) {
+                return $consoleCommand->getGrooveClient()->messages()->attachments(['message' => $grooveMessageId])['attachments'];
             },
             null,
             null);

@@ -30,11 +30,6 @@ class SyncCommandBase extends Command
      */
     private static $rate_limits = array();
 
-    /**
-     * @var array $uploadQueue
-     */
-    protected $uploadQueue = array();
-
     private $grooveClient;
     private $helpscoutClient;
 
@@ -90,10 +85,6 @@ class SyncCommandBase extends Command
     public function getGrooveClient()
     {
         return $this->grooveClient;
-    }
-
-    function addToQueue($jobs_list) {
-        $this->uploadQueue = array_merge($this->uploadQueue, $jobs_list);
     }
 
     /**

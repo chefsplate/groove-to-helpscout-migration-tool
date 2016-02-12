@@ -65,7 +65,6 @@ class SyncCustomers extends SyncCommandBase
                 },
                 CustomerProcessor::getProcessor($this),
                 CustomerPublisher::getPublisher($this));
-            $this->progressBar->advance(count($grooveCustomersListResponse));
             $numberCustomers += count($grooveCustomersListResponse);
             $pageNumber++;
         } while (count($grooveCustomersListResponse) > 0 && $pageNumber <= 2);
