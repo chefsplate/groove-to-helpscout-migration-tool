@@ -32,9 +32,22 @@ email addresses with HelpScout user emails and Groove mailboxes to HelpScout mai
 
 ### CLI Usage
 
-Run `php artisan sync-customers` in the root of the Laravel project. Customers come first, as the process of creating conversations may create a new customer.
+In the root of the Laravel project, run: 
+```
+php artisan sync-customers
+``` 
+Customers come first, as the process of creating conversations may create a new customer.
 
-Once that succeeds, run: `php artisan sync-tickets`.
+You can also resume a previously stopped migration by passing in a `startPage` parameter:
+```
+php artisan sync-customers --startPage=10
+```
+
+Once that succeeds, run: 
+```
+php artisan sync-tickets
+```
+to migrate Groove tickets, messages, images, attachments and tags.
 
 ## Notes
 
@@ -68,6 +81,7 @@ Please be aware of the following when importing:
 - Groove mainly supports Twitter and LinkedIn as social media platforms
 - Groove doesn't have chat accounts out-of-the-box
 - HelpScout API does not support creation of team members (agents); team members and mailboxes will have to be manually created
+- HelpScout API doesn't appear to have any way of indicating who closed a particular ticket
 - HelpScout API doesn't appear to have any concept of priorities for conversations/threads
 
 For help moving from Zendesk, Desk or UserVoice, check out the [HelpScout knowledge base](http://docs.helpscout.net/category/74-copying-email-to-help-scout).
