@@ -108,7 +108,7 @@ class SyncCommandBase extends Command
         if (SyncCommandBase::$requests_processed_this_minute[$serviceName] >= $rateLimit) {
             $seconds_to_sleep = 60 - (time() - SyncCommandBase::$start_of_minute_timestamp[$serviceName]);
             if ($seconds_to_sleep > 0) {
-                $this->progressBar->setMessage("Rate limit reached. Waiting $seconds_to_sleep seconds.");
+                $this->progressBar->setMessage("Rate limit reached for '$serviceName'. Waiting $seconds_to_sleep seconds.");
                 $this->progressBar->display();
                 sleep($seconds_to_sleep);
                 $this->progressBar->setMessage("");

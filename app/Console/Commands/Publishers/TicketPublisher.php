@@ -47,7 +47,7 @@ class TicketPublisher implements PublisherInterface
             $consoleCommand->info("\nCompleted uploading tickets to HelpScout.");
 
             if (sizeof($errorMapping) > 0) {
-                // TODO: output to a CSV instead
+                // TODO: output to a CSV instead or Laravel logger
                 $consoleCommand->error(print_r($errorMapping, TRUE));
             }
         };

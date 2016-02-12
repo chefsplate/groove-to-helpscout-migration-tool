@@ -12,7 +12,7 @@ class SyncCustomers extends SyncCommandBase
      *
      * @var string
      */
-    protected $signature = 'sync-customers';
+    protected $signature = 'sync-customers {--startPage=1 : The starting page }';
 
     /**
      * The console command description.
@@ -41,21 +41,22 @@ class SyncCustomers extends SyncCommandBase
         // Acquire and process
         // -------------------
 
+        $pageNumber = $this->option('startPage');
+
         $customersService = $this->getGrooveClient()->customers();
 
         $grooveCustomersCountResponse = $this->makeRateLimitedRequest(
             GROOVE,
-            function () use ($customersService) {
-                return $customersService->list(['page' => 1, 'per_page' => 50])['meta'];
+            function () use ($customersService, $pageNumber) {
+                return $customersService->list(['page' => $pageNumber, 'per_page' => 50])['meta'];
             });
         $totalCustomers = $grooveCustomersCountResponse['pagination']['total_count'];
 
-        $pageNumber = 1;
         $numberCustomers = 0;
         $totalPages = $grooveCustomersCountResponse['pagination']['total_pages'];
 
-        do {
-            $this->info('Starting page ' . $pageNumber . " of $totalPages ($totalCustomers total customers)");
+        while ($pageNumber <= $totalPages) {
+            $this->info("\nStarting page " . $pageNumber . " of $totalPages ($totalCustomers total customers)");
             $grooveCustomersListResponse = $this->makeRateLimitedRequest(
                 GROOVE,
                 function () use ($customersService, $pageNumber) {
@@ -65,7 +66,7 @@ class SyncCustomers extends SyncCommandBase
                 CustomerPublisher::getPublisher($this));
             $numberCustomers += count($grooveCustomersListResponse);
             $pageNumber++;
-        } while (count($grooveCustomersListResponse) > 0);
+        }
 
         $this->info("\nCompleted migrating $numberCustomers customers.");
     }
