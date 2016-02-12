@@ -19,8 +19,6 @@ class TicketPublisher implements PublisherInterface
 
             $errorMapping = array();
 
-            $consoleCommand->info("Uploading tickets to HelpScout...");
-
             $consoleCommand->createProgressBar(count($conversationsList));
 
             /* @var $conversation \HelpScout\model\Conversation */
@@ -44,7 +42,6 @@ class TicketPublisher implements PublisherInterface
                 $consoleCommand->getProgressBar()->advance();
             }
             $consoleCommand->getProgressBar()->finish();
-            $consoleCommand->info("\nCompleted uploading tickets to HelpScout.");
 
             if (sizeof($errorMapping) > 0) {
                 // TODO: output to a CSV instead or Laravel logger

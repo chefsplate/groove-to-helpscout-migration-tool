@@ -55,13 +55,13 @@ class SyncTickets extends SyncCommandBase
                 return $ticketsService->list(['page' => 1, 'per_page' => 1])['meta'];
             });
         $totalTickets = $grooveTicketsQueryResponse['pagination']['total_count'];
-
-        $this->createProgressBar($totalTickets);
+        $totalPages = $grooveTicketsQueryResponse['pagination']['total_pages'];
 
         $pageNumber = 1;
         $numberTickets = 0;
 
-        do {
+        while ($pageNumber <= $totalPages) {
+            $this->info("\nStarting page " . $pageNumber . " of $totalPages ($totalTickets total tickets)");
             $grooveTicketsResponse = $this->makeRateLimitedRequest(
                 GROOVE,
                 function () use ($ticketsService, $pageNumber) {
@@ -72,10 +72,7 @@ class SyncTickets extends SyncCommandBase
             );
             $numberTickets += count($grooveTicketsResponse);
             $pageNumber++;
-        } while (count($grooveTicketsResponse) > 0 && $pageNumber <= 1);
-
-        $this->progressBar->finish();
-
+        }
 
         $this->info("\nCompleted migrating $numberTickets tickets.");
     }
