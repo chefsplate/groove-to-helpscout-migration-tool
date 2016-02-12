@@ -5,7 +5,6 @@ namespace App\Console\Commands\Processors;
 use App\Console\Commands\APIHelper;
 use App\Console\Commands\Processors\Exceptions\ValidationException;
 use App\Console\Commands\SyncCommandBase;
-use DateTime;
 use finfo;
 use HelpScout\ApiException;
 use HelpScout\Collection;

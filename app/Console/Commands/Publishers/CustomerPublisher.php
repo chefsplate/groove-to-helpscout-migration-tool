@@ -2,20 +2,7 @@
 
 namespace App\Console\Commands\Publishers;
 
-use App\Console\Commands\APIHelper;
-use App\Console\Commands\Processors\Exceptions\ValidationException;
-use App\Console\Commands\Publishers\PublisherInterface;
-use App\Console\Commands\SyncCommandBase;
-use DateTime;
-use finfo;
 use HelpScout\ApiException;
-use HelpScout\Collection;
-use HelpScout\model\Attachment;
-use HelpScout\model\Conversation;
-use HelpScout\model\ref\PersonRef;
-use HelpScout\model\thread\AbstractThread;
-use HelpScout\model\thread\Customer;
-use HelpScout\model\thread\Note;
 
 class CustomerPublisher implements PublisherInterface
 {
