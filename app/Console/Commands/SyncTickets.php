@@ -12,7 +12,7 @@ class SyncTickets extends SyncCommandBase
      *
      * @var string
      */
-    protected $signature = 'sync-tickets';
+    protected $signature = 'sync-tickets {--startPage=1 : The starting page }';
 
     /**
      * The console command description.
@@ -44,6 +44,8 @@ class SyncTickets extends SyncCommandBase
         // Acquire and process
         // -------------------
 
+        $pageNumber = $this->option('startPage');
+
         $ticketsService = $this->getGrooveClient()->tickets();
 
         // Initial validation
@@ -57,7 +59,6 @@ class SyncTickets extends SyncCommandBase
         $totalTickets = $grooveTicketsQueryResponse['pagination']['total_count'];
         $totalPages = $grooveTicketsQueryResponse['pagination']['total_pages'];
 
-        $pageNumber = 1;
         $numberTickets = 0;
 
         while ($pageNumber <= $totalPages) {
