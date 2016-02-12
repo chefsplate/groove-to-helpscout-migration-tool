@@ -47,9 +47,7 @@ class SyncCustomers extends SyncCommandBase
             GROOVE,
             function () use ($customersService) {
                 return $customersService->list(['page' => 1, 'per_page' => 1])['meta'];
-            },
-            null,
-            null);
+            });
         $totalCustomers = $grooveCustomersCountResponse['pagination']['total_count'];
 
         $this->createProgressBar($totalCustomers);

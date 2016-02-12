@@ -26,7 +26,7 @@ class CustomerPublisher implements PublisherInterface
                     $client = $consoleCommand->getHelpScoutClient();
                     $helpscoutCreateCustomerResponse = $consoleCommand->makeRateLimitedRequest(HELPSCOUT, function () use ($client, $customer) {
                         $client->createCustomer($customer);
-                    }, null, null);
+                    });
                 } catch (ApiException $e) {
                     foreach ($e->getErrors() as $error) {
                         $errorMapping[$error['message']] [] = "[" . $error['property'] . "] " . $error['message'] . ": " . $error['value'];

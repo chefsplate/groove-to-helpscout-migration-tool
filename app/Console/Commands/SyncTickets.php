@@ -53,7 +53,7 @@ class SyncTickets extends SyncCommandBase
             GROOVE,
             function () use ($ticketsService) {
                 return $ticketsService->list(['page' => 1, 'per_page' => 1])['meta'];
-            }, null, null);
+            });
         $totalTickets = $grooveTicketsQueryResponse['pagination']['total_count'];
 
         $this->createProgressBar($totalTickets);
@@ -90,7 +90,7 @@ class SyncTickets extends SyncCommandBase
 
         $grooveMailboxes = $this->makeRateLimitedRequest(GROOVE, function () use ($mailboxesService) {
             return $mailboxesService->mailboxes()['mailboxes'];
-        }, null, null);
+        });
 
         $hasErrors = false;
 
@@ -108,7 +108,7 @@ class SyncTickets extends SyncCommandBase
         $this->info("\nValidation check: ensuring each Groove agent maps to a corresponding HelpScout user");
         $grooveAgents = $this->makeRateLimitedRequest(GROOVE, function () use ($agentsService) {
             return $agentsService->list()['agents'];
-        }, null, null);
+        });
 
         foreach($grooveAgents as $grooveAgent) {
             $grooveAgentEmail = $grooveAgent['email'];

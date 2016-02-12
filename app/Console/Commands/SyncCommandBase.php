@@ -54,8 +54,8 @@ class SyncCommandBase extends Command
             return;
         }
 
-        $rate_limits[GROOVE] = config('services.groove.ratelimit');
-        $rate_limits[HELPSCOUT] = config('services.helpscout.ratelimit');
+        self::$rate_limits[GROOVE] = config('services.groove.ratelimit');
+        self::$rate_limits[HELPSCOUT] = config('services.helpscout.ratelimit');
     }
 
     public function createProgressBar($total_units)

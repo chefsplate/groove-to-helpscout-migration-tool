@@ -29,7 +29,7 @@ class TicketPublisher implements PublisherInterface
                     $client = $consoleCommand->getHelpScoutClient();
                     $createConversationResponse = $consoleCommand->makeRateLimitedRequest(HELPSCOUT, function () use ($client, $conversation) {
                         $client->createConversation($conversation, true); // imported = true to prevent spam!
-                    }, null, null);
+                    });
                 } catch (ApiException $e) {
                     if ($e->getErrors()) {
                         foreach ($e->getErrors() as $error) {

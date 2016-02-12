@@ -84,9 +84,7 @@ class TicketProcessor implements ProcessorInterface
                             $grooveCustomer = $consoleCommand->makeRateLimitedRequest(GROOVE,
                                 function () use ($consoleCommand, $customerEmail) {
                                     return $consoleCommand->getGrooveClient()->customers()->find(['customer_email' => $customerEmail])['customer'];
-                                },
-                                null,
-                                null);
+                                });
                             $helpscoutPersonRef = new PersonRef((object) array('email' => $grooveCustomer['email'], 'type' => 'customer'));
                             $conversation->setCustomer($helpscoutPersonRef);
                             $conversation->setCreatedBy($helpscoutPersonRef);
@@ -138,9 +136,7 @@ class TicketProcessor implements ProcessorInterface
                 $grooveMessages = $consoleCommand->makeRateLimitedRequest(GROOVE,
                     function () use ($consoleCommand, $pageNumber, $grooveTicket) {
                         return $consoleCommand->getGrooveClient()->messages()->list(['page' => $pageNumber, 'per_page' => 50, 'ticket_number' => $grooveTicket['number']]);
-                    },
-                    null,
-                    null);
+                    });
 
                 foreach($grooveMessages['messages'] as $grooveMessage) {
                     /* @var $thread AbstractThread */
@@ -178,9 +174,7 @@ class TicketProcessor implements ProcessorInterface
                         $helpscoutCustomer = $consoleCommand->makeRateLimitedRequest(HELPSCOUT,
                             function () use ($consoleCommand, $authorEmailAddress) {
                                 return $consoleCommand->getHelpScoutClient()->searchCustomersByEmail($authorEmailAddress);
-                            },
-                            null,
-                            null);
+                            });
                         if ($helpscoutCustomer->getCount() > 0) {
                             /* @var $firstItem \HelpScout\model\Customer */
                             $firstItem = $helpscoutCustomer->getItems()[0];
@@ -191,11 +185,11 @@ class TicketProcessor implements ProcessorInterface
                             $consoleCommand->warn('Could not find HelpScout customer for ' . $authorEmailAddress . '. Was sync-customers command run?');
                             $grooveCustomer = $consoleCommand->makeRateLimitedRequest(
                                 GROOVE,
-                                function () use ($consoleCommand, $authorEmailAddress) {
-                                    return $consoleCommand->getGrooveClient()->customers()->searchCustomersByEmail($authorEmailAddress);
-                                },
-                                null,
-                                null);
+                                function () use ($consoleCommand, $grooveMessage) {
+                                    $url = $grooveMessage['links']['author']['href'] . '?access_token=' . config('services.groove.key');
+                                    $jsonData = json_decode(file_get_contents($url), true);
+                                    return $jsonData['customer'];
+                                });
                             list($firstName, $lastName) = APIHelper::extractFirstAndLastNameFromFullName($grooveCustomer['name']);
                             $personRef->setFirstName($firstName);
                             $personRef->setLastName($lastName);
@@ -280,9 +274,7 @@ class TicketProcessor implements ProcessorInterface
         $attachments = $consoleCommand->makeRateLimitedRequest(GROOVE,
             function () use ($consoleCommand, $grooveMessageId) {
                 return $consoleCommand->getGrooveClient()->messages()->attachments(['message' => $grooveMessageId])['attachments'];
-            },
-            null,
-            null);
+            });
 
         foreach($attachments as $grooveAttachment) {
             // Attachments: attachments must be sent to the API before they can
@@ -299,9 +291,9 @@ class TicketProcessor implements ProcessorInterface
             $helpscoutAttachment->setMimeType($mimeType);
             $helpscoutAttachment->setData(base64_encode($buffer));
 
-            $consoleCommand->makeRateLimitedRequest(function () use ($consoleCommand, $helpscoutAttachment) {
+            $consoleCommand->makeRateLimitedRequest(GROOVE, function () use ($consoleCommand, $helpscoutAttachment) {
                 $consoleCommand->getHelpScoutClient()->createAttachment($helpscoutAttachment);
-            }, null, GROOVE);
+            });
 
             // hash should be programmatically be set now
             $helpscoutAttachment->setData(null);
