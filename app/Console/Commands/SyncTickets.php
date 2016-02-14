@@ -59,6 +59,10 @@ class SyncTickets extends SyncCommandBase
         $totalTickets = $grooveTicketsQueryResponse['pagination']['total_count'];
         $totalPages = $grooveTicketsQueryResponse['pagination']['total_pages'];
 
+        if ($pageNumber > $totalPages) {
+            $this->warn("Warning: Requested page number $pageNumber is greater than total number of pages ($totalPages).");
+        }
+
         $numberTickets = 0;
 
         while ($pageNumber <= $totalPages) {

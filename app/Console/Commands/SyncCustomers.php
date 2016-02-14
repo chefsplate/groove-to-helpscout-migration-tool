@@ -51,9 +51,13 @@ class SyncCustomers extends SyncCommandBase
                 return $customersService->list(['page' => $pageNumber, 'per_page' => 50])['meta'];
             });
         $totalCustomers = $grooveCustomersCountResponse['pagination']['total_count'];
+        $totalPages = $grooveCustomersCountResponse['pagination']['total_pages'];
+
+        if ($pageNumber > $totalPages) {
+            $this->warn("Warning: Requested page number $pageNumber is greater than total number of pages ($totalPages).");
+        }
 
         $numberCustomers = 0;
-        $totalPages = $grooveCustomersCountResponse['pagination']['total_pages'];
 
         while ($pageNumber <= $totalPages) {
             $this->info("\nStarting page " . $pageNumber . " of $totalPages ($totalCustomers total customers)");

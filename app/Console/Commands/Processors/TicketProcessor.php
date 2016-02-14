@@ -195,6 +195,9 @@ class TicketProcessor implements ProcessorInterface
                             $grooveCustomer = $consoleCommand->makeRateLimitedRequest(
                                 GROOVE,
                                 function () use ($consoleCommand, $grooveMessage) {
+                                    // we need to make a raw curl request because the current version of the
+                                    // Groove/Guzzle API client does not support disabling urlencoding in URL parameters
+                                    // this is apparently a Groove API requirement
                                     $url = $grooveMessage['links']['author']['href'] . '?access_token=' . config('services.groove.key');
                                     $jsonData = json_decode(file_get_contents($url), true);
                                     return $jsonData['customer'];
