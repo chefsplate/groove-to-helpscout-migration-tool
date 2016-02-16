@@ -58,10 +58,8 @@ class TicketPublisher implements PublisherInterface
                 $consoleCommand->getProgressBar()->finish();
             }
 
-
             if (sizeof($errorMapping) > 0) {
                 // TODO: output to a CSV instead or Laravel logger
-                // TODO: call progressbar's clear, then output error and then display() - do this for all messages
                 $consoleCommand->error(print_r($errorMapping, TRUE));
             }
         };

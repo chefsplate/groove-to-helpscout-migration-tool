@@ -87,6 +87,51 @@ class SyncCommandBase extends Command
         return $this->grooveClient;
     }
 
+    // COMMAND OVERRIDES
+    // Clear the progress bar prior to invoking any of the command console's output methods
+    // Re-display the progress bar after rendering the output line
+
+    private function isProgressBarActive() {
+        return $this->getProgressBar()
+            && $this->getProgressBar()->getMaxSteps() !== $this->getProgressBar()->getProgress();
+    }
+
+    public function info($string, $verbosity = null) {
+        if ($this->isProgressBarActive()) { $this->getProgressBar()->clear(); }
+        parent::info($string, $verbosity);
+        if ($this->isProgressBarActive()) { $this->getProgressBar()->display(); }
+    }
+
+    public function line($string, $style = null, $verbosity = null) {
+        if ($this->isProgressBarActive()) { $this->getProgressBar()->clear(); }
+        parent::line($string, $style, $verbosity);
+        if ($this->isProgressBarActive()) { $this->getProgressBar()->display(); }
+    }
+
+    public function comment($string, $verbosity = null) {
+        if ($this->isProgressBarActive()) { $this->getProgressBar()->clear(); }
+        parent::comment($string, $verbosity);
+        if ($this->isProgressBarActive()) { $this->getProgressBar()->display(); }
+    }
+
+    public function question($string, $verbosity = null) {
+        if ($this->isProgressBarActive()) { $this->getProgressBar()->clear(); }
+        parent::question($string, $verbosity);
+        if ($this->isProgressBarActive()) { $this->getProgressBar()->display(); }
+    }
+
+    public function error($string, $verbosity = null) {
+        if ($this->isProgressBarActive()) { $this->getProgressBar()->clear(); }
+        parent::error($string, $verbosity);
+        if ($this->isProgressBarActive()) { $this->getProgressBar()->display(); }
+    }
+
+    public function warn($string, $verbosity = null) {
+        if ($this->isProgressBarActive()) { $this->getProgressBar()->clear(); }
+        parent::warn($string, $verbosity);
+        if ($this->isProgressBarActive()) { $this->getProgressBar()->display(); }
+    }
+
     /**
      * TODO change interface to method passing in configuration object (which is validated)
      *
