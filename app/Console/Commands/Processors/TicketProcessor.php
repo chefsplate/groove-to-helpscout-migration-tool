@@ -36,6 +36,7 @@ class TicketProcessor implements ProcessorInterface
          * @param $ticketsList
          * @return array
          */
+        // TODO: return singleton function
         return function ($ticketsList) use ($consoleCommand) {
             $processedTickets = array();
 

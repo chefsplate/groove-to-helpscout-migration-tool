@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Console\Commands\Processors\TicketProcessor;
 use App\Console\Commands\Publishers\TicketPublisher;
+use GuzzleHttp\Command\Exception\CommandClientException;
 
 class SyncTickets extends SyncCommandBase
 {
@@ -12,7 +13,8 @@ class SyncTickets extends SyncCommandBase
      *
      * @var string
      */
-    protected $signature = 'sync-tickets {--startPage=1 : The starting page }';
+    protected $signature = 'sync-tickets
+                            {--startPage=1 : The starting page } {tickets? : (Optional) Comma-separated list (no spaces) of specific Groove ticket numbers for syncing. Useful for resuming failed uploads.}';
 
     /**
      * The console command description.
@@ -41,45 +43,17 @@ class SyncTickets extends SyncCommandBase
      */
     public function handle()
     {
-        // Acquire and process
-        // -------------------
-
-        $pageNumber = $this->option('startPage');
-
-        $ticketsService = $this->getGrooveClient()->tickets();
-
         // Initial validation
         $this->performInitialValidation();
 
-        $grooveTicketsQueryResponse = $this->makeRateLimitedRequest(
-            GROOVE,
-            function () use ($ticketsService) {
-                return $ticketsService->list(['page' => 1, 'per_page' => 10])['meta'];
-            });
-        $totalTickets = $grooveTicketsQueryResponse['pagination']['total_count'];
-        $totalPages = $grooveTicketsQueryResponse['pagination']['total_pages'];
-
-        if ($pageNumber > $totalPages) {
-            $this->warn("Warning: Requested page number $pageNumber is greater than total number of pages ($totalPages).");
+        // Acquire and process
+        // -------------------
+        $ticketsToSync = $this->argument('tickets');
+        if ($ticketsToSync) {
+            $this->migrateSpecificGrooveTickets($ticketsToSync);
+        } else {
+            $this->migrateAllTickets();
         }
-
-        $numberTickets = 0;
-
-        while ($pageNumber <= $totalPages) {
-            $this->info("\nStarting page " . $pageNumber . " of $totalPages ($totalTickets total tickets)");
-            $grooveTicketsResponse = $this->makeRateLimitedRequest(
-                GROOVE,
-                function () use ($ticketsService, $pageNumber) {
-                    return $ticketsService->list(['page' => $pageNumber, 'per_page' => 10])['tickets'];
-                },
-                TicketProcessor::getProcessor($this),
-                TicketPublisher::getPublisher($this)
-            );
-            $numberTickets += count($grooveTicketsResponse);
-            $pageNumber++;
-        }
-
-        $this->info("\nCompleted migrating $numberTickets tickets.");
     }
 
     private function performInitialValidation()
@@ -128,4 +102,85 @@ class SyncTickets extends SyncCommandBase
         }
         $this->info("\nValidation passed.");
     }
+
+    /**
+     * @param $ticketsToSync array
+     */
+    private function migrateSpecificGrooveTickets($ticketsToSync)
+    {
+        $ticketsService = $this->getGrooveClient()->tickets();
+
+        $grooveTicketNumbers = explode(',', $ticketsToSync);
+        $grooveTickets = array();
+
+        // Acquire all tickets first
+        foreach($grooveTicketNumbers as $grooveTicketNumber) {
+            $this->info("Fetching Groove ticket #$grooveTicketNumber");
+            $grooveTicket = null;
+            try {
+                $grooveTicket = $this->makeRateLimitedRequest(
+                    GROOVE,
+                    function () use ($ticketsService, $grooveTicketNumber) {
+                        return $ticketsService->find(['ticket_number' => intval($grooveTicketNumber)])['ticket'];
+                    });
+            } catch (CommandClientException $cce) {
+                $this->error($cce->getMessage() . " when fetching Groove ticket number $grooveTicketNumber");
+            }
+
+            if (!$grooveTicket) {
+                $this->warn("Warning: Requested Groove ticket number $grooveTicketNumber does not exist!");
+            } else {
+                $grooveTickets [] = $grooveTicket;
+            }
+        }
+
+        // Process responses
+        $processedModels = call_user_func(TicketProcessor::getProcessor($this), $grooveTickets);
+
+        // Publish (upload) HelpScout models
+        $numberTickets = count($processedModels);
+        if ($numberTickets > 0) {
+            call_user_func(TicketPublisher::getPublisher($this), $processedModels);
+        }
+
+        $this->info("\nCompleted migrating $numberTickets tickets.");
+    }
+
+    private function migrateAllTickets()
+    {
+        $pageNumber = $this->option('startPage');
+
+        $ticketsService = $this->getGrooveClient()->tickets();
+
+        $grooveTicketsQueryResponse = $this->makeRateLimitedRequest(
+            GROOVE,
+            function () use ($ticketsService) {
+                return $ticketsService->list(['page' => 1, 'per_page' => 10])['meta'];
+            });
+        $totalTickets = $grooveTicketsQueryResponse['pagination']['total_count'];
+        $totalPages = $grooveTicketsQueryResponse['pagination']['total_pages'];
+
+        if ($pageNumber > $totalPages) {
+            $this->warn("Warning: Requested page number $pageNumber is greater than total number of pages ($totalPages).");
+        }
+
+        $numberTickets = 0;
+
+        while ($pageNumber <= $totalPages) {
+            $this->info("\nStarting page " . $pageNumber . " of $totalPages ($totalTickets total tickets)");
+            $grooveTicketsResponse = $this->makeRateLimitedRequest(
+                GROOVE,
+                function () use ($ticketsService, $pageNumber) {
+                    return $ticketsService->list(['page' => $pageNumber, 'per_page' => 10])['tickets'];
+                },
+                TicketProcessor::getProcessor($this),
+                TicketPublisher::getPublisher($this)
+            );
+            $numberTickets += count($grooveTicketsResponse);
+            $pageNumber++;
+        }
+
+        $this->info("\nCompleted migrating $numberTickets tickets.");
+    }
+
 }
