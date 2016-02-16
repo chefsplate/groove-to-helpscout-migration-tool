@@ -292,9 +292,11 @@ class TicketProcessor implements ProcessorInterface
             // Attachments: attachments must be sent to the API before they can
             // be used when creating a thread. Use the hash value returned when
             // creating the attachment to associate it with a ticket.
-            $consoleCommand->info('Attachment ' . $grooveAttachment['filename'] . ' found (' . $grooveAttachment['size'] . ' bytes). Uploading to HelpScout...');
+            $fileName = $grooveAttachment['filename'];
+            $fileSize = $grooveAttachment['filesize'];
+            $consoleCommand->info("Attachment $fileName found ($fileSize bytes). Uploading to HelpScout...");
             $helpscoutAttachment = new Attachment();
-            $helpscoutAttachment->setFileName($grooveAttachment['filename']);
+            $helpscoutAttachment->setFileName($fileName);
 
             $buffer = file_get_contents($grooveAttachment['url']);
             $finfo = new finfo(FILEINFO_MIME_TYPE);
@@ -303,16 +305,20 @@ class TicketProcessor implements ProcessorInterface
             $helpscoutAttachment->setData($buffer);
 
             if (intval($grooveAttachment['size']) > 10485760) {
-                $consoleCommand->warn('Warning: Maximum file size supported by HelpScout is 10 MB (10485760 bytes). File size for ' . $grooveAttachment['filename'] . ' is ' . $grooveAttachment['size'] . ' bytes.');
+                $consoleCommand->warn("Warning: Maximum file size supported by HelpScout is 10 MB (10485760 bytes). File size for $fileName is $fileSize bytes.");
             }
-            $consoleCommand->makeRateLimitedRequest(GROOVE, function () use ($consoleCommand, $helpscoutAttachment) {
-                $consoleCommand->getHelpScoutClient()->createAttachment($helpscoutAttachment);
-            });
+            try {
+                $consoleCommand->makeRateLimitedRequest(GROOVE, function () use ($consoleCommand, $helpscoutAttachment) {
+                    $consoleCommand->getHelpScoutClient()->createAttachment($helpscoutAttachment);
+                });
 
-            // hash should be programmatically be set now
-            $helpscoutAttachment->setData(null);
+                // hash should be programmatically be set now
+                $helpscoutAttachment->setData(null);
 
-            $helpscoutAttachments []= $helpscoutAttachment;
+                $helpscoutAttachments []= $helpscoutAttachment;
+            } catch (\Exception $e) {
+                $consoleCommand->error("Failed to create HelpScout attachment for $fileName: " . $e->getMessage());
+            }
         }
 
         return $helpscoutAttachments;
