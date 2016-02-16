@@ -49,6 +49,26 @@ php artisan sync-tickets
 ```
 to migrate Groove tickets, messages, images, attachments and tags.
 
+The `sync-tickets` command also accepts the `startPage` optional parameter as described above.
+
+If, for any reason, a particular ticket fails to migrate (e.g. attachment fails), you can 
+redo `sync-tickets` with just that particular ticket number:
+  
+```
+php artisan sync-tickets [<comma-separated list of Groove ticket numbers>] 
+```
+
+e.g. `php artisan sync-tickets 1000,2000,3000` to sync over just tickets #1000, 2000, and 3000.
+
+By default, `sync-tickets` will ensure no duplicate tickets are created (keep in mind there is a slight delay before HelpScout picks up newly-created tickets).
+You can bypass the duplication check (e.g. on the initial import) by specifying:
+
+```
+php artisan sync-tickets --checkDuplicates=false 
+```
+
+For both commands, you can also specify `--help` to read additional details.  
+
 ## Notes
 
 This tool is compatible with V1 of both Groove and HelpScout APIs.

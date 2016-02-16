@@ -12,6 +12,7 @@ use HelpScout\Collection;
 use HelpScout\model\Attachment;
 use HelpScout\model\Conversation;
 use HelpScout\model\ref\PersonRef;
+use HelpScout\model\SearchConversation;
 use HelpScout\model\thread\AbstractThread;
 use HelpScout\model\thread\Customer;
 use HelpScout\model\thread\Note;
@@ -27,7 +28,6 @@ class TicketProcessor implements ProcessorInterface
 {
     /**
      * @param $consoleCommand SyncCommandBase
-     * @param array $servicesMapping
      * @return \Closure
      */
     public static function getProcessor($consoleCommand)
@@ -39,9 +39,32 @@ class TicketProcessor implements ProcessorInterface
         // TODO: return singleton function
         return function ($ticketsList) use ($consoleCommand) {
             $processedTickets = array();
+            $checkForDuplicates = $consoleCommand->option('checkDuplicates');
 
             foreach ($ticketsList as $grooveTicket) {
                 try {
+                    if ($checkForDuplicates) {
+                        /* @var $searchResults Collection */
+                        $dateString = $grooveTicket['created_at'];
+                        $searchResults = $consoleCommand->makeRateLimitedRequest(HELPSCOUT, function() use ($consoleCommand, $dateString) {
+                            return $consoleCommand->getHelpScoutClient()->conversationSearch("(modifiedAt:[$dateString TO $dateString])");
+                        });
+                        if ($searchResults->getCount() > 1) {
+                            $helpscoutConversationNumber = null;
+                            /* @var $searchConversation SearchConversation */
+                            foreach($searchResults->getItems() as $searchConversation) {
+                                if (strcasecmp($searchConversation->getSubject(), $grooveTicket['title']) === 0) {
+                                    $helpscoutConversationNumber = $searchConversation->getNumber();
+                                    break;
+                                }
+                            }
+                            if ($helpscoutConversationNumber) {
+                                $consoleCommand->warn("Warning: Duplicate ticket \"" . $grooveTicket['title'] . "\" on $dateString already uploaded to HelpScout (conversation #$helpscoutConversationNumber). Skipping.");
+                                continue;
+                            }
+                        }
+                    }
+
                     $conversation = new Conversation();
                     $conversation->setType('email');
                     $conversation->setSubject($grooveTicket['title']);
@@ -293,7 +316,7 @@ class TicketProcessor implements ProcessorInterface
             // be used when creating a thread. Use the hash value returned when
             // creating the attachment to associate it with a ticket.
             $fileName = $grooveAttachment['filename'];
-            $fileSize = $grooveAttachment['filesize'];
+            $fileSize = $grooveAttachment['size'];
             $consoleCommand->info("Attachment $fileName found ($fileSize bytes). Uploading to HelpScout...");
             $helpscoutAttachment = new Attachment();
             $helpscoutAttachment->setFileName($fileName);

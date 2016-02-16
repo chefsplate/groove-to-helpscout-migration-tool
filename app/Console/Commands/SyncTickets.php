@@ -14,7 +14,7 @@ class SyncTickets extends SyncCommandBase
      * @var string
      */
     protected $signature = 'sync-tickets
-                            {--startPage=1 : The starting page } {tickets? : (Optional) Comma-separated list (no spaces) of specific Groove ticket numbers for syncing. Useful for resuming failed uploads.}';
+                            {--startPage=1 : The starting page } {--checkDuplicates=true : Check whether each ticket has already been uploaded to HelpScout. If so, then don\'t upload a new one. } {tickets? : (Optional) Comma-separated list (no spaces) of specific Groove ticket numbers for syncing. Useful for resuming failed uploads.}';
 
     /**
      * The console command description.
