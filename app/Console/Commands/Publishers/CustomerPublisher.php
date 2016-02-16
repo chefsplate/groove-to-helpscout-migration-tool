@@ -2,16 +2,28 @@
 
 namespace App\Console\Commands\Publishers;
 
+use App\Console\Commands\SyncCommandBase;
 use HelpScout\ApiException;
 
 class CustomerPublisher implements PublisherInterface
 {
+    private static $publisher;
+
     public static function getPublisher($consoleCommand)
     {
-        /**
-         * @param $customersList array
-         * @return array
-         */
+        if (null === static::$publisher) {
+            static::$publisher = self::generatePublisher($consoleCommand);
+        }
+
+        return static::$publisher;
+    }
+
+    /**
+     * @param $consoleCommand SyncCommandBase
+     * @return \Closure
+     */
+    private static function generatePublisher($consoleCommand)
+    {
         return function ($customersList) use ($consoleCommand) {
             // Publish/create customers
             // ------------------------

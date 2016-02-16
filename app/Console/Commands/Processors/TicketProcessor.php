@@ -26,129 +26,19 @@ use HelpScout\model\thread\Note;
  */
 class TicketProcessor implements ProcessorInterface
 {
+    private static $processor;
+
     /**
      * @param $consoleCommand SyncCommandBase
      * @return \Closure
      */
     public static function getProcessor($consoleCommand)
     {
-        /**
-         * @param $ticketsList
-         * @return array
-         */
-        // TODO: return singleton function
-        return function ($ticketsList) use ($consoleCommand) {
-            $processedTickets = array();
-            $checkForDuplicates = $consoleCommand->option('checkDuplicates');
+        if (null === static::$processor) {
+            static::$processor = self::generateProcessor($consoleCommand);
+        }
 
-            foreach ($ticketsList as $grooveTicket) {
-                try {
-                    if ($checkForDuplicates) {
-                        /* @var $searchResults Collection */
-                        $dateString = $grooveTicket['created_at'];
-                        $searchResults = $consoleCommand->makeRateLimitedRequest(HELPSCOUT, function() use ($consoleCommand, $dateString) {
-                            return $consoleCommand->getHelpScoutClient()->conversationSearch("(modifiedAt:[$dateString TO $dateString])");
-                        });
-                        if ($searchResults->getCount() > 1) {
-                            $helpscoutConversationNumber = null;
-                            /* @var $searchConversation SearchConversation */
-                            foreach($searchResults->getItems() as $searchConversation) {
-                                if (strcasecmp($searchConversation->getSubject(), $grooveTicket['title']) === 0) {
-                                    $helpscoutConversationNumber = $searchConversation->getNumber();
-                                    break;
-                                }
-                            }
-                            if ($helpscoutConversationNumber) {
-                                $consoleCommand->warn("Warning: Duplicate ticket \"" . $grooveTicket['title'] . "\" on $dateString already uploaded to HelpScout (conversation #$helpscoutConversationNumber). Skipping.");
-                                continue;
-                            }
-                        }
-                    }
-
-                    $conversation = new Conversation();
-                    $conversation->setType('email');
-                    $conversation->setSubject($grooveTicket['title']);
-
-                    // mailbox
-                    $mailboxName = $grooveTicket['mailbox'];
-                    $assignedMailbox = APIHelper::findMatchingMailboxByName($mailboxName);
-                    if (!$assignedMailbox) {
-                        $mailboxRef = APIHelper::findMatchingMailboxByEmail(config('services.helpscout.default_mailbox'))->toRef();
-                    } else {
-                        $mailboxRef = $assignedMailbox->toRef();
-                    }
-                    $conversation->setMailbox($mailboxRef);
-                    if (!$conversation->getMailbox()) {
-                        $exception = new ApiException("Mailbox not found in HelpScout: " . $mailboxName);
-                        $exception->setErrors(
-                            array(
-                                [
-                                    'property' => 'mailbox',
-                                    'message' => 'Mailbox not found',
-                                    'value' => $mailboxName
-                                ]
-                            ));
-                        throw $exception;
-                    }
-
-                    $tags = $grooveTicket['tags'];
-                    if ($tags && count($tags) > 0) {
-                        $conversation->setTags($tags);
-                    }
-
-                    // CustomerRef
-                    $matches = array();
-                    if (isset($grooveTicket['links']['customer']) && preg_match('@^https://api.groovehq.com/v1/customers/(.*)@i',
-                            $grooveTicket['links']['customer']['href'], $matches) === 1) {
-                        $customerEmail = $matches[1];
-                        if (filter_var($customerEmail, FILTER_VALIDATE_EMAIL)) {
-                            $helpscoutPersonRef = new PersonRef((object) array('email' => $customerEmail, 'type' => 'customer'));
-                            $conversation->setCustomer($helpscoutPersonRef);
-                            $conversation->setCreatedBy($helpscoutPersonRef);
-                        } else {
-                            $grooveCustomer = $consoleCommand->makeRateLimitedRequest(GROOVE,
-                                function () use ($consoleCommand, $customerEmail) {
-                                    return $consoleCommand->getGrooveClient()->customers()->find(['customer_email' => $customerEmail])['customer'];
-                                });
-                            $helpscoutPersonRef = new PersonRef((object) array('email' => $grooveCustomer['email'], 'type' => 'customer'));
-                            $conversation->setCustomer($helpscoutPersonRef);
-                            $conversation->setCreatedBy($helpscoutPersonRef);
-                        }
-
-                    } else {
-                        throw new ApiException("No customer defined for ticket: " . $grooveTicket['number']);
-                    }
-
-                    // CreatedAt
-                    $datetime = new DateTime($grooveTicket['created_at']);
-                    $conversation->setCreatedAt($datetime->format('c'));
-
-                    $conversation->setThreads(self::retrieveThreadsForGrooveTicket($consoleCommand, $grooveTicket));
-
-                    $status = APIHelper::getHelpScoutStatusForGrooveState($grooveTicket['state']);
-                    if ($status) {
-                        $conversation->setStatus($status);
-                    } else {
-                        $consoleCommand->error("Unknown state provided: " . $grooveTicket['state']);
-                    }
-
-                    $processedTickets [] = $conversation;
-                } catch (ApiException $e) {
-                    $consoleCommand->error($e->getMessage());
-                    $consoleCommand->error(print_r($e->getErrors(), TRUE));
-                } catch (\CurlException $ce) {
-                    $errorMessage = "CurlException encountered for ticket " . $grooveTicket['number'] . " \"" . $grooveTicket['summary'] . "\"";
-                    $consoleCommand->error($errorMessage . ": " . $ce->getMessage());
-                } catch (\ErrorException $errex) {
-                    $errorMessage = "Error encountered for ticket " . $grooveTicket['number'] . " \"" . $grooveTicket['summary'] . "\"";
-                    $consoleCommand->error($errorMessage . ": " . $errex->getMessage());
-                } catch (\Exception $ex) {
-                    $errorMessage = "Exception encountered for ticket " . $grooveTicket['number'] . " \"" . $grooveTicket['summary'] . "\"";
-                    $consoleCommand->error($errorMessage . ": " . $ex->getMessage());
-                }
-            }
-            return $processedTickets;
-        };
+        return static::$processor;
     }
 
     /**
@@ -345,5 +235,126 @@ class TicketProcessor implements ProcessorInterface
         }
 
         return $helpscoutAttachments;
+    }
+
+    /**
+     * @param $consoleCommand SyncCommandBase
+     * @return \Closure
+     */
+    private static function generateProcessor($consoleCommand)
+    {
+        return function ($ticketsList) use ($consoleCommand) {
+            $processedTickets = array();
+            $checkForDuplicates = $consoleCommand->option('checkDuplicates');
+
+            foreach ($ticketsList as $grooveTicket) {
+                try {
+                    if ($checkForDuplicates) {
+                        /* @var $searchResults Collection */
+                        $dateString = $grooveTicket['created_at'];
+                        $searchResults = $consoleCommand->makeRateLimitedRequest(HELPSCOUT, function () use ($consoleCommand, $dateString) {
+                            return $consoleCommand->getHelpScoutClient()->conversationSearch("(modifiedAt:[$dateString TO $dateString])");
+                        });
+                        if ($searchResults->getCount() > 1) {
+                            $helpscoutConversationNumber = null;
+                            /* @var $searchConversation SearchConversation */
+                            foreach ($searchResults->getItems() as $searchConversation) {
+                                if (strcasecmp($searchConversation->getSubject(), $grooveTicket['title']) === 0) {
+                                    $helpscoutConversationNumber = $searchConversation->getNumber();
+                                    break;
+                                }
+                            }
+                            if ($helpscoutConversationNumber) {
+                                $consoleCommand->warn("Warning: Duplicate ticket \"" . $grooveTicket['title'] . "\" on $dateString already uploaded to HelpScout (conversation #$helpscoutConversationNumber). Skipping.");
+                                continue;
+                            }
+                        }
+                    }
+
+                    $conversation = new Conversation();
+                    $conversation->setType('email');
+                    $conversation->setSubject($grooveTicket['title']);
+
+                    // mailbox
+                    $mailboxName = $grooveTicket['mailbox'];
+                    $assignedMailbox = APIHelper::findMatchingMailboxByName($mailboxName);
+                    if (!$assignedMailbox) {
+                        $mailboxRef = APIHelper::findMatchingMailboxByEmail(config('services.helpscout.default_mailbox'))->toRef();
+                    } else {
+                        $mailboxRef = $assignedMailbox->toRef();
+                    }
+                    $conversation->setMailbox($mailboxRef);
+                    if (!$conversation->getMailbox()) {
+                        $exception = new ApiException("Mailbox not found in HelpScout: " . $mailboxName);
+                        $exception->setErrors(
+                            array(
+                                [
+                                    'property' => 'mailbox',
+                                    'message' => 'Mailbox not found',
+                                    'value' => $mailboxName
+                                ]
+                            ));
+                        throw $exception;
+                    }
+
+                    $tags = $grooveTicket['tags'];
+                    if ($tags && count($tags) > 0) {
+                        $conversation->setTags($tags);
+                    }
+
+                    // CustomerRef
+                    $matches = array();
+                    if (isset($grooveTicket['links']['customer']) && preg_match('@^https://api.groovehq.com/v1/customers/(.*)@i',
+                            $grooveTicket['links']['customer']['href'], $matches) === 1
+                    ) {
+                        $customerEmail = $matches[1];
+                        if (filter_var($customerEmail, FILTER_VALIDATE_EMAIL)) {
+                            $helpscoutPersonRef = new PersonRef((object)array('email' => $customerEmail, 'type' => 'customer'));
+                            $conversation->setCustomer($helpscoutPersonRef);
+                            $conversation->setCreatedBy($helpscoutPersonRef);
+                        } else {
+                            $grooveCustomer = $consoleCommand->makeRateLimitedRequest(GROOVE,
+                                function () use ($consoleCommand, $customerEmail) {
+                                    return $consoleCommand->getGrooveClient()->customers()->find(['customer_email' => $customerEmail])['customer'];
+                                });
+                            $helpscoutPersonRef = new PersonRef((object)array('email' => $grooveCustomer['email'], 'type' => 'customer'));
+                            $conversation->setCustomer($helpscoutPersonRef);
+                            $conversation->setCreatedBy($helpscoutPersonRef);
+                        }
+
+                    } else {
+                        throw new ApiException("No customer defined for ticket: " . $grooveTicket['number']);
+                    }
+
+                    // CreatedAt
+                    $datetime = new DateTime($grooveTicket['created_at']);
+                    $conversation->setCreatedAt($datetime->format('c'));
+
+                    $conversation->setThreads(self::retrieveThreadsForGrooveTicket($consoleCommand, $grooveTicket));
+
+                    $status = APIHelper::getHelpScoutStatusForGrooveState($grooveTicket['state']);
+                    if ($status) {
+                        $conversation->setStatus($status);
+                    } else {
+                        $consoleCommand->error("Unknown state provided: " . $grooveTicket['state']);
+                    }
+
+                    $processedTickets [] = $conversation;
+                } catch (ApiException $e) {
+                    $consoleCommand->error($e->getMessage());
+                    $consoleCommand->error(print_r($e->getErrors(), TRUE));
+                } catch (\CurlException $ce) {
+                    $errorMessage = "CurlException encountered for ticket " . $grooveTicket['number'] . " \"" . $grooveTicket['summary'] . "\"";
+                    $consoleCommand->error($errorMessage . ": " . $ce->getMessage());
+                } catch (\ErrorException $errex) {
+                    $errorMessage = "Error encountered for ticket " . $grooveTicket['number'] . " \"" . $grooveTicket['summary'] . "\"";
+                    $consoleCommand->error($errorMessage . ": " . $errex->getMessage());
+                } catch (\Exception $ex) {
+                    $errorMessage = "Exception encountered for ticket " . $grooveTicket['number'] . " \"" . $grooveTicket['summary'] . "\"";
+                    $consoleCommand->error($errorMessage . ": " . $ex->getMessage());
+                }
+            }
+            return $processedTickets;
+        };
     }
 }

@@ -19,16 +19,27 @@ use HelpScout\model\customer\WebsiteEntry;
  */
 class CustomerProcessor implements ProcessorInterface
 {
+    private static $processor;
+
     /**
      * @param SyncCommandBase $consoleCommand
      * @return Closure
      */
     public static function getProcessor($consoleCommand = null)
     {
-        /**
-         * @param $customers_list
-         * @return array
-         */
+        if (null === static::$processor) {
+            static::$processor = self::generateProcessor($consoleCommand);
+        }
+
+        return static::$processor;
+    }
+
+    /**
+     * @param $consoleCommand SyncCommandBase
+     * @return Closure
+     */
+    private static function generateProcessor($consoleCommand)
+    {
         return function ($customersList) use ($consoleCommand) {
             $processedCustomers = array();
             foreach ($customersList as $grooveCustomer) {
