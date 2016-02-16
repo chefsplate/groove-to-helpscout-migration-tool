@@ -292,7 +292,7 @@ class TicketProcessor implements ProcessorInterface
             // Attachments: attachments must be sent to the API before they can
             // be used when creating a thread. Use the hash value returned when
             // creating the attachment to associate it with a ticket.
-            $consoleCommand->info('Attachment ' . $grooveAttachment['filename'] . ' found. Uploading to HelpScout...');
+            $consoleCommand->info('Attachment ' . $grooveAttachment['filename'] . ' found (' . $grooveAttachment['size'] . ' bytes). Uploading to HelpScout...');
             $helpscoutAttachment = new Attachment();
             $helpscoutAttachment->setFileName($grooveAttachment['filename']);
 
@@ -302,6 +302,9 @@ class TicketProcessor implements ProcessorInterface
             $helpscoutAttachment->setMimeType($mimeType);
             $helpscoutAttachment->setData($buffer);
 
+            if (intval($grooveAttachment['size']) > 10485760) {
+                $consoleCommand->warn('Warning: Maximum file size supported by HelpScout is 10 MB (10485760 bytes). File size for ' . $grooveAttachment['filename'] . ' is ' . $grooveAttachment['size'] . ' bytes.');
+            }
             $consoleCommand->makeRateLimitedRequest(GROOVE, function () use ($consoleCommand, $helpscoutAttachment) {
                 $consoleCommand->getHelpScoutClient()->createAttachment($helpscoutAttachment);
             });
