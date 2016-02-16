@@ -299,8 +299,7 @@ class TicketProcessor implements ProcessorInterface
             $finfo = new finfo(FILEINFO_MIME_TYPE);
             $mimeType = $finfo->buffer($buffer);
             $helpscoutAttachment->setMimeType($mimeType);
-            // TODO: verify w/ HelpScout that we can send 20 MB of base64 encoding
-            $helpscoutAttachment->setData(base64_encode($buffer));
+            $helpscoutAttachment->setData($buffer);
 
             $consoleCommand->makeRateLimitedRequest(GROOVE, function () use ($consoleCommand, $helpscoutAttachment) {
                 $consoleCommand->getHelpScoutClient()->createAttachment($helpscoutAttachment);
