@@ -35,7 +35,12 @@ class CustomerPublisher implements PublisherInterface
                 }
                 $consoleCommand->getProgressBar()->advance();
             }
-            $consoleCommand->getProgressBar()->finish();
+
+            if ($consoleCommand->getProgressBar()->getMaxSteps() === 0) {
+                $consoleCommand->getProgressBar()->clear();
+            } else {
+                $consoleCommand->getProgressBar()->finish();
+            }
 
             if (sizeof($errorMapping) > 0) {
                 // TODO: output to a CSV instead
