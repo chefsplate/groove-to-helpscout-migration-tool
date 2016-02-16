@@ -1,6 +1,6 @@
 # groove-to-helpscout-migration-tool
 
-**Work-in-progress**. ETL project to migrate from GrooveHQ to HelpScout via APIs.
+ETL project to migrate from GrooveHQ to HelpScout via APIs.
 
 This ETL tool uses the Acquire -> Process -> Publish sequence of phases as suggested by http://www.seabourneinc.com/rethinking-etl-for-the-api-age/
 
@@ -8,12 +8,12 @@ This ETL tool uses the Acquire -> Process -> Publish sequence of phases as sugge
 
 - PHP 5.4+
 - `allow_url_fopen` must be allowed (for attachment downloads)
-- [Laravel](https://laravel.com/docs/5.1/installation) (for console commands)
 - [Composer](https://getcomposer.org/download/)
 
 ### Dependencies
 
 We leverage the following libraries via Composer:
+- [Laravel](https://laravel.com/docs/5.1/installation) (for console commands)
 - [helpscout/api](https://github.com/helpscout/helpscout-api-php)
 - [jadb/php-groovehq](https://github.com/jadb/php-groovehq)
 
@@ -32,6 +32,8 @@ email addresses with HelpScout user emails and Groove mailboxes to HelpScout mai
 
 ### CLI Usage
 
+#### Customers
+
 In the root of the Laravel project, run: 
 ```
 php artisan sync-customers
@@ -43,7 +45,9 @@ You can also resume a previously stopped migration by passing in a `startPage` p
 php artisan sync-customers --startPage=10
 ```
 
-Once that succeeds, run: 
+#### Tickets
+
+Once the syncing of customers succeeds, run: 
 ```
 php artisan sync-tickets
 ```
@@ -58,7 +62,7 @@ redo `sync-tickets` with just that particular ticket number:
 php artisan sync-tickets [<comma-separated list of Groove ticket numbers>] 
 ```
 
-e.g. `php artisan sync-tickets 1000,2000,3000` to sync over just tickets #1000, 2000, and 3000.
+e.g. `php artisan sync-tickets 1000,2000,3000` will sync over just tickets #1000, 2000, and 3000.
 
 By default, `sync-tickets` will ensure no duplicate tickets are created (keep in mind there is a slight delay before HelpScout picks up newly-created tickets).
 You can bypass the duplication check (e.g. on the initial import) by specifying:
