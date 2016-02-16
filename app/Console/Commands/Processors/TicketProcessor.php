@@ -110,14 +110,13 @@ class TicketProcessor implements ProcessorInterface
 
                     $processedTickets [] = $conversation;
                 } catch (ApiException $e) {
-                    // TODO: output this to console instead of dumping
-                    echo $e->getMessage();
-                    print_r($e->getErrors());
+                    $consoleCommand->error($e->getMessage());
+                    $consoleCommand->error(print_r($e->getErrors(), TRUE));
                 } catch (\CurlException $ce) {
                     $errorMessage = "CurlException encountered for ticket " . $grooveTicket['number'] . " \"" . $grooveTicket['summary'] . "\"";
                     $consoleCommand->error($errorMessage . ": " . $ce->getMessage());
                 } catch (\ErrorException $errex) {
-                    $errorMessage = "Exception encountered for ticket " . $grooveTicket['number'] . " \"" . $grooveTicket['summary'] . "\"";
+                    $errorMessage = "Error encountered for ticket " . $grooveTicket['number'] . " \"" . $grooveTicket['summary'] . "\"";
                     $consoleCommand->error($errorMessage . ": " . $errex->getMessage());
                 } catch (\Exception $ex) {
                     $errorMessage = "Exception encountered for ticket " . $grooveTicket['number'] . " \"" . $grooveTicket['summary'] . "\"";
@@ -232,8 +231,8 @@ class TicketProcessor implements ProcessorInterface
                 $pageNumber++;
             } while ($pageNumber < $grooveMessages['meta']['pagination']['total_pages']);
         } catch (ApiException $e) {
-            echo $e->getMessage();
-            print_r($e->getErrors());
+            $consoleCommand->error($e->getMessage());
+            $consoleCommand->error(print_r($e->getErrors(), TRUE));
         }
 
         return $helpscoutThreads;
@@ -299,7 +298,6 @@ class TicketProcessor implements ProcessorInterface
             $buffer = file_get_contents($grooveAttachment['url']);
             $finfo = new finfo(FILEINFO_MIME_TYPE);
             $mimeType = $finfo->buffer($buffer);
-
             $helpscoutAttachment->setMimeType($mimeType);
             // TODO: verify w/ HelpScout that we can send 20 MB of base64 encoding
             $helpscoutAttachment->setData(base64_encode($buffer));

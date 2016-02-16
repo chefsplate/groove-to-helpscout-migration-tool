@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands\Processors;
 use App\Console\Commands\APIHelper;
+use App\Console\Commands\SyncCommandBase;
 use Closure;
 use HelpScout\ApiException;
 use HelpScout\model\Customer;
@@ -19,7 +20,7 @@ use HelpScout\model\customer\WebsiteEntry;
 class CustomerProcessor implements ProcessorInterface
 {
     /**
-     * @param null $consoleCommand
+     * @param SyncCommandBase $consoleCommand
      * @return Closure
      */
     public static function getProcessor($consoleCommand = null)
@@ -28,7 +29,7 @@ class CustomerProcessor implements ProcessorInterface
          * @param $customers_list
          * @return array
          */
-        return function ($customersList) {
+        return function ($customersList) use ($consoleCommand) {
             $processedCustomers = array();
             foreach ($customersList as $grooveCustomer) {
 
@@ -135,8 +136,8 @@ class CustomerProcessor implements ProcessorInterface
 
                     $processedCustomers [] = $customer;
                 } catch (ApiException $e) {
-                    echo $e->getMessage();
-                    print_r($e->getErrors());
+                    $consoleCommand->error($e->getMessage());
+                    $consoleCommand->error(print_r($e->getErrors(), TRUE));
                 }
             }
             return $processedCustomers;

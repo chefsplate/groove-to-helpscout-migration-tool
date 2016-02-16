@@ -10,7 +10,6 @@ use Symfony\Component\Console\Helper\ProgressBar;
 
 class SyncCommandBase extends Command
 {
-    // TODO: convert following static fields to an object (so we won't be able to assign array to something else)
     /**
      * @var $requests_processed_this_minute array
      */
@@ -18,6 +17,7 @@ class SyncCommandBase extends Command
         GROOVE => 0,
         HELPSCOUT => 0
     );
+
     /**
      * @var $start_of_minute_timestamp array
      */

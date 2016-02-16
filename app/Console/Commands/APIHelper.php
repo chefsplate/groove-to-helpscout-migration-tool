@@ -46,9 +46,9 @@ class APIHelper
 
         $pageNumber = 1;
         $cumulativeHelpscoutMailboxes = array();
+        $consoleCommand = self::$consoleCommand;
         try {
             do {
-                $consoleCommand = self::$consoleCommand;
                 /* @var $helpscoutMailboxesResponse Collection */
                 $helpscoutMailboxesResponse = self::$consoleCommand->makeRateLimitedRequest(HELPSCOUT, function () use ($consoleCommand, $pageNumber) {
                     return $consoleCommand->getHelpScoutClient()->getMailboxes(['page' => $pageNumber]);
@@ -57,8 +57,8 @@ class APIHelper
                 $pageNumber++;
             } while ($helpscoutMailboxesResponse->hasNextPage());
         } catch (ApiException $e) {
-            echo $e->getMessage();
-            print_r($e->getErrors());
+            $consoleCommand->error($e->getMessage());
+            $consoleCommand->error(print_r($e->getErrors(), TRUE));
         }
 
         self::$helpscoutMailboxes = $cumulativeHelpscoutMailboxes;
@@ -82,10 +82,9 @@ class APIHelper
 
         $pageNumber = 1;
         $cumulativeHelpscoutUsers = array();
+        $consoleCommand = self::$consoleCommand;
         try {
             do {
-                $consoleCommand = self::$consoleCommand;
-
                 /* @var $helpscoutUsersResponse Collection */
                 $helpscoutUsersResponse = self::$consoleCommand->makeRateLimitedRequest(HELPSCOUT,
                     function () use ($consoleCommand, $pageNumber) {
@@ -95,8 +94,8 @@ class APIHelper
                 $pageNumber++;
             } while ($helpscoutUsersResponse->hasNextPage());
         } catch (ApiException $e) {
-            echo $e->getMessage();
-            print_r($e->getErrors());
+            $consoleCommand->error($e->getMessage());
+            $consoleCommand->error(print_r($e->getErrors(), TRUE));
         }
 
         self::$helpscoutUsers = $cumulativeHelpscoutUsers;
