@@ -52,15 +52,17 @@ class TicketProcessor implements ProcessorInterface
     {
         $pageNumber = 1;
         $helpscoutThreads = array();
-        try {
-            do {
-                /* @var $grooveMessages array */
-                $grooveMessages = $consoleCommand->makeRateLimitedRequest(GROOVE,
-                    function () use ($consoleCommand, $pageNumber, $grooveTicket) {
-                        return $consoleCommand->getGrooveClient()->messages()->list(['page' => $pageNumber, 'per_page' => 50, 'ticket_number' => $grooveTicket['number']]);
-                    });
 
-                foreach($grooveMessages['messages'] as $grooveMessage) {
+        do {
+            /* @var $grooveMessages array */
+            $grooveMessages = $consoleCommand->makeRateLimitedRequest(GROOVE,
+                function () use ($consoleCommand, $pageNumber, $grooveTicket) {
+                    return $consoleCommand->getGrooveClient()->messages()->list(['page' => $pageNumber, 'per_page' => 50, 'ticket_number' => $grooveTicket['number']]);
+                });
+
+            foreach ($grooveMessages['messages'] as $grooveMessage) {
+                $authorEmailAddress = null;
+                try {
                     /* @var $thread AbstractThread */
                     $thread = null;
                     if ($grooveMessage['note']) {
@@ -141,18 +143,17 @@ class TicketProcessor implements ProcessorInterface
                     list($attachments, $failedAttachmentNotes) = self::retrieveAttachmentsForGrooveMessage($consoleCommand, $grooveMessage, $status);
                     $thread->setAttachments($attachments);
 
-                    $helpscoutThreads []= $thread;
+                    $helpscoutThreads [] = $thread;
 
                     if (count($failedAttachmentNotes) > 0) {
                         $helpscoutThreads = array_merge($helpscoutThreads, $failedAttachmentNotes);
                     }
+                } catch (ApiException $e) {
+                    $consoleCommand->error("Failed to create HelpScout thread for Groove message (" . $grooveMessage['href'] . " created by $authorEmailAddress at " . $grooveMessage['created_at'] . "). Message was: \n" . APIHelper::formatApiExceptionArray($e));
                 }
-                $pageNumber++;
-            } while ($pageNumber < $grooveMessages['meta']['pagination']['total_pages']);
-        } catch (ApiException $e) {
-            $consoleCommand->error($e->getMessage());
-            $consoleCommand->error(print_r($e->getErrors(), TRUE));
-        }
+            }
+            $pageNumber++;
+        } while ($pageNumber < $grooveMessages['meta']['pagination']['total_pages']);
 
         return $helpscoutThreads;
     }
@@ -275,6 +276,7 @@ class TicketProcessor implements ProcessorInterface
             $checkForDuplicates = $consoleCommand->option('checkDuplicates');
 
             foreach ($ticketsList as $grooveTicket) {
+                $customerEmail = null;
                 try {
                     if ($checkForDuplicates) {
                         /* @var $searchResults Collection */
@@ -368,8 +370,7 @@ class TicketProcessor implements ProcessorInterface
 
                     $processedTickets [] = $conversation;
                 } catch (ApiException $e) {
-                    $consoleCommand->error($e->getMessage());
-                    $consoleCommand->error(print_r($e->getErrors(), TRUE));
+                    $consoleCommand->error("Failed to create HelpScout conversation for Groove ticket (#" . $grooveTicket['number'] . " created by $customerEmail at " . $grooveTicket['created_at'] . "). Message was: \n" . APIHelper::formatApiExceptionArray($e));
                 } catch (\CurlException $ce) {
                     $errorMessage = "CurlException encountered for ticket " . $grooveTicket['number'] . " \"" . $grooveTicket['summary'] . "\"";
                     $consoleCommand->error($errorMessage . ": " . $ce->getMessage());

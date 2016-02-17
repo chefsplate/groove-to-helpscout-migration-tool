@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands\Publishers;
 
+use App\Console\Commands\APIHelper;
 use App\Console\Commands\SyncCommandBase;
 use HelpScout\ApiException;
 
@@ -40,6 +41,7 @@ class CustomerPublisher implements PublisherInterface
                         $client->createCustomer($customer);
                     });
                 } catch (ApiException $e) {
+                    $consoleCommand->error("Failed to upload HelpScout customer (" . implode(',', $customer->getEmails()) . ")" . ". Message was: " . APIHelper::formatApiExceptionArray($e));
                     foreach ($e->getErrors() as $error) {
                         $errorMapping[$error['message']] [] = "[" . $error['property'] . "] " . $error['message'] . ": " . $error['value'];
                         $consoleCommand->getProgressBar()->setMessage('Error: [' . $error['property'] . '] ' . $error['message'] . ' (' . $error['value'] . ')' . str_pad(' ', 20));
@@ -55,8 +57,8 @@ class CustomerPublisher implements PublisherInterface
             }
 
             if (sizeof($errorMapping) > 0) {
-                // TODO: output to a CSV instead
-                $consoleCommand->error(print_r($errorMapping, TRUE));
+                // TODO: output to a CSV or Laravel logger instead
+//                $consoleCommand->error(print_r($errorMapping, TRUE));
             }
         };
     }

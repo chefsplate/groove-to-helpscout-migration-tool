@@ -147,8 +147,9 @@ class CustomerProcessor implements ProcessorInterface
 
                     $processedCustomers [] = $customer;
                 } catch (ApiException $e) {
-                    $consoleCommand->error($e->getMessage());
-                    $consoleCommand->error(print_r($e->getErrors(), TRUE));
+                    $grooveCustomerEmail = $grooveCustomer['email'];
+                    $grooveCustomerName = $grooveCustomer['name'];
+                    $consoleCommand->error("Failed to create HelpScout customer for Groove customer \"$grooveCustomerName\" ($grooveCustomerEmail). Message was: " . APIHelper::formatApiExceptionArray($e));
                 }
             }
             return $processedCustomers;

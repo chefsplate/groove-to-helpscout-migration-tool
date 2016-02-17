@@ -57,8 +57,7 @@ class APIHelper
                 $pageNumber++;
             } while ($helpscoutMailboxesResponse->hasNextPage());
         } catch (ApiException $e) {
-            $consoleCommand->error($e->getMessage());
-            $consoleCommand->error(print_r($e->getErrors(), TRUE));
+            $consoleCommand->error("Failed to retrieve HelpScout mailboxes. Message was: " . static::formatApiExceptionArray($e));
         }
 
         self::$helpscoutMailboxes = $cumulativeHelpscoutMailboxes;
@@ -94,8 +93,7 @@ class APIHelper
                 $pageNumber++;
             } while ($helpscoutUsersResponse->hasNextPage());
         } catch (ApiException $e) {
-            $consoleCommand->error($e->getMessage());
-            $consoleCommand->error(print_r($e->getErrors(), TRUE));
+            $consoleCommand->error("Failed to retrieve HelpScout users. Message was: " . static::formatApiExceptionArray($e));
         }
 
         self::$helpscoutUsers = $cumulativeHelpscoutUsers;
@@ -198,5 +196,20 @@ class APIHelper
                 return null;
                 break;
         }
+    }
+
+    /**
+     * Return a single string to be displayed to the console
+     * @param ApiException $apiException
+     */
+    public static function formatApiExceptionArray(ApiException $apiException) {
+        $output = $apiException->getMessage();
+        if ($apiException->getErrors() && count($apiException->getErrors()) > 0) {
+            $errors = $apiException->getErrors();
+            foreach($errors as $error) {
+                $output .= "\n[" . $error['property'] . "] " . $error['message'] . " (value = " . print_r($error['value'], TRUE) . ")";
+            }
+        }
+        return $output;
     }
 }

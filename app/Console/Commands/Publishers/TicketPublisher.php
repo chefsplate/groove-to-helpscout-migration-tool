@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands\Publishers;
 
+use App\Console\Commands\APIHelper;
 use App\Console\Commands\SyncCommandBase;
 use HelpScout\ApiException;
 
@@ -41,6 +42,11 @@ class TicketPublisher implements PublisherInterface
                         $client->createConversation($conversation, true); // imported = true to prevent spam!
                     });
                 } catch (ApiException $e) {
+                    $createdBy = $conversation->getCreatedBy()->getEmail() ?
+                        $conversation->getCreatedBy()->getEmail()
+                        : "user #" . $conversation->getCreatedBy()->getId();
+                    $consoleCommand->error("Failed to upload HelpScout conversation \"" . $conversation->getSubject()
+                        . "\" by " . $createdBy . " at " . $conversation->getCreatedAt() . ". Message was: \n" . APIHelper::formatApiExceptionArray($e));
                     if ($e->getErrors()) {
                         foreach ($e->getErrors() as $error) {
                             $errorMapping[$error['message']] [] = $error;
@@ -72,7 +78,7 @@ class TicketPublisher implements PublisherInterface
 
             if (sizeof($errorMapping) > 0) {
                 // TODO: output to a CSV instead or Laravel logger
-                $consoleCommand->error(print_r($errorMapping, TRUE));
+//                $consoleCommand->error(print_r($errorMapping, TRUE));
             }
         };
     }

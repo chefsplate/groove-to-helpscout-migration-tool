@@ -48,9 +48,7 @@ class SyncCommandBase extends Command
         try {
             $this->helpscoutClient->setKey(config('services.helpscout.key'));
         } catch (ApiException $e) {
-            $this->error("Error creating client");
-            $this->error($e->getMessage());
-            $this->error(print_r($e->getErrors(), TRUE));
+            $this->error("There was an error creating the HelpScout client. Message was: " . APIHelper::formatApiExceptionArray($e));
             return;
         }
 
