@@ -45,7 +45,8 @@ return [
     'helpscout' => [
         'key' => 'REPLACE ME',
         'ratelimit' => 200,
-        'default_mailbox' => 'david.chang@chefsplate.com'
+        'default_mailbox' => 'david.chang@chefsplate.com',
+        'default_user_id' => 0 // REPLACE ME: this user ID will be used to auto-generate notes in the case attachment uploads fail
     ]
 
 ];

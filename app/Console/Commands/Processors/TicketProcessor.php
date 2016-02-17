@@ -138,9 +138,14 @@ class TicketProcessor implements ProcessorInterface
                         }
                     }
 
-                    $thread->setAttachments(self::retrieveAttachmentsForGrooveMessage($consoleCommand, $grooveMessage));
+                    list($attachments, $failedAttachmentNotes) = self::retrieveAttachmentsForGrooveMessage($consoleCommand, $grooveMessage, $status);
+                    $thread->setAttachments($attachments);
 
                     $helpscoutThreads []= $thread;
+
+                    if (count($failedAttachmentNotes) > 0) {
+                        $helpscoutThreads = array_merge($helpscoutThreads, $failedAttachmentNotes);
+                    }
                 }
                 $pageNumber++;
             } while ($pageNumber < $grooveMessages['meta']['pagination']['total_pages']);
@@ -176,10 +181,13 @@ class TicketProcessor implements ProcessorInterface
     /**
      * @param $consoleCommand SyncCommandBase
      * @param $grooveMessage array
+     * @param $ticketStatus
      * @return array
+     * @throws ApiException
+     * @throws \Exception
      * @internal param array $grooveTicket
      */
-    private static function retrieveAttachmentsForGrooveMessage($consoleCommand, $grooveMessage)
+    private static function retrieveAttachmentsForGrooveMessage($consoleCommand, $grooveMessage, $ticketStatus)
     {
         if (!isset($grooveMessage['links']['attachments'])) {
             return null;
@@ -188,6 +196,7 @@ class TicketProcessor implements ProcessorInterface
         $grooveMessageId = null;
         $matches = array();
         $helpscoutAttachments = array();
+        $failedAttachments = array();
         if (preg_match('@^https://api.groovehq.com/v1/attachments\?message=(.*)@i',
                 $grooveMessage['links']['attachments']['href'], $matches) === 1
         ) {
@@ -231,10 +240,28 @@ class TicketProcessor implements ProcessorInterface
                 $helpscoutAttachments []= $helpscoutAttachment;
             } catch (\Exception $e) {
                 $consoleCommand->error("Failed to create HelpScout attachment for $fileName: " . $e->getMessage());
+
+                // For whatever reason the upload failed, let's create a private note indicating containing a
+                // link where the attachment can be viewed
+                $note = new Note();
+                $note->setType('note');
+                $note->setStatus($ticketStatus);
+
+                $createdBy = new PersonRef();
+                $createdBy->setId(config('services.helpscout.default_user_id'));
+                $createdBy->setType('user');
+                $note->setCreatedBy($createdBy);
+
+                $datetime = new DateTime($grooveMessage['created_at']);
+                $note->setCreatedAt($datetime->format('c'));
+
+                $url = $grooveAttachment['url'];
+                $note->setBody("Attachment \"$fileName\" failed to upload. Please view original here: <a href=\"$url\">$url</a>");
+                $failedAttachments []= $note;
             }
         }
 
-        return $helpscoutAttachments;
+        return array($helpscoutAttachments, $failedAttachments);
     }
 
     /**
