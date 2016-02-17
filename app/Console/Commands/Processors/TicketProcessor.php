@@ -122,11 +122,15 @@ class TicketProcessor implements ProcessorInterface
                             $personRef->setLastName($lastName);
                         }
                     } else {
+                        // person is an agent/user
                         $matchingUser = APIHelper::findMatchingUserWithEmail($authorEmailAddress);
                         if (!$matchingUser) {
                             throw new ValidationException("No corresponding user found for: $authorEmailAddress");
                         }
-                        $id = $matchingUser->getId();
+                        // set ID only on notes
+                        if ($grooveMessage['note']) {
+                            $id = $matchingUser->getId();
+                        }
                         $personRef->setFirstName($matchingUser->getFirstName());
                         $personRef->setLastName($matchingUser->getLastName());
 
