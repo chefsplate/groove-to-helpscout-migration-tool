@@ -126,6 +126,10 @@ class TicketProcessor implements ProcessorInterface
                         if (!$matchingUser) {
                             throw new ValidationException("No corresponding user found for: $authorEmailAddress");
                         }
+                        $id = $matchingUser->getId();
+                        $personRef->setFirstName($matchingUser->getFirstName());
+                        $personRef->setLastName($matchingUser->getLastName());
+
                     }
                     $personRef->setType($grooveMessage['note'] ? 'user' : 'customer');
                     $personRef->setEmail($authorEmailAddress);
@@ -347,6 +351,9 @@ class TicketProcessor implements ProcessorInterface
                                     return $consoleCommand->getGrooveClient()->customers()->find(['customer_email' => $customerEmail])['customer'];
                                 });
                             $helpscoutPersonRef = new PersonRef((object)array('email' => $grooveCustomer['email'], 'type' => 'customer'));
+                            list($firstName, $lastName) = APIHelper::extractFirstAndLastNameFromFullName($grooveCustomer['name']);
+                            $helpscoutPersonRef->setFirstName($firstName);
+                            $helpscoutPersonRef->setLastName($lastName);
                             $conversation->setCustomer($helpscoutPersonRef);
                             $conversation->setCreatedBy($helpscoutPersonRef);
                         }
