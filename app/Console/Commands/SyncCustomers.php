@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Console\Commands\Processors\CustomerProcessor;
 use App\Console\Commands\Publishers\CustomerPublisher;
+use Symfony\Component\Console\Formatter\OutputFormatterStyle;
 
 class SyncCustomers extends SyncCommandBase
 {
@@ -38,6 +39,9 @@ class SyncCustomers extends SyncCommandBase
      */
     public function handle()
     {
+        $style = new OutputFormatterStyle('white', 'black', array('bold'));
+        $this->output->getFormatter()->setStyle('header', $style);
+
         // Acquire and process
         // -------------------
 
@@ -60,7 +64,7 @@ class SyncCustomers extends SyncCommandBase
         $numberCustomers = 0;
 
         while ($pageNumber <= $totalPages) {
-            $this->info("\nStarting page " . $pageNumber . " of $totalPages ($totalCustomers total customers)");
+            $this->line("\n\n=== Starting page " . $pageNumber . " of $totalPages ($totalCustomers total customers) ===", 'header');
             $grooveCustomersListResponse = $this->makeRateLimitedRequest(
                 GROOVE,
                 function () use ($customersService, $pageNumber) {

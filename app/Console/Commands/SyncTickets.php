@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Console\Commands\Processors\TicketProcessor;
 use App\Console\Commands\Publishers\TicketPublisher;
 use GuzzleHttp\Command\Exception\CommandClientException;
+use Symfony\Component\Console\Formatter\OutputFormatterStyle;
 
 class SyncTickets extends SyncCommandBase
 {
@@ -43,6 +44,9 @@ class SyncTickets extends SyncCommandBase
      */
     public function handle()
     {
+        $style = new OutputFormatterStyle('white', 'black', array('bold'));
+        $this->output->getFormatter()->setStyle('header', $style);
+
         // Initial validation
         $this->performInitialValidation();
 
@@ -167,7 +171,7 @@ class SyncTickets extends SyncCommandBase
         $numberTickets = 0;
 
         while ($pageNumber <= $totalPages) {
-            $this->info("\nStarting page " . $pageNumber . " of $totalPages ($totalTickets total tickets)");
+            $this->line("\n\n=== Starting page " . $pageNumber . " of $totalPages ($totalTickets total tickets) ===", 'header');
             $grooveTicketsResponse = $this->makeRateLimitedRequest(
                 GROOVE,
                 function () use ($ticketsService, $pageNumber) {
