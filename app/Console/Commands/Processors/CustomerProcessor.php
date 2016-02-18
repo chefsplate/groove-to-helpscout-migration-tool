@@ -54,7 +54,7 @@ class CustomerProcessor implements ProcessorInterface
                     // Groove doesn't separate these fields
                     /* @var $fullName string */
                     $fullName = $grooveCustomer['name'];
-                    list($firstName, $lastName) = APIHelper::extractFirstAndLastNameFromFullName($fullName);
+                    list($firstName, $lastName) = APIHelper::extractFirstAndLastNameFromFullName($fullName, $consoleCommand);
                     $customer->setFirstName($firstName);
                     $customer->setLastName($lastName);
 

@@ -117,7 +117,7 @@ class TicketProcessor implements ProcessorInterface
                                     $jsonData = json_decode(file_get_contents($url), true);
                                     return $jsonData['customer'];
                                 });
-                            list($firstName, $lastName) = APIHelper::extractFirstAndLastNameFromFullName($grooveCustomer['name']);
+                            list($firstName, $lastName) = APIHelper::extractFirstAndLastNameFromFullName($grooveCustomer['name'], $consoleCommand);
                             $personRef->setFirstName($firstName);
                             $personRef->setLastName($lastName);
                         }
@@ -250,7 +250,7 @@ class TicketProcessor implements ProcessorInterface
             } catch (\Exception $e) {
                 $consoleCommand->error("Failed to create HelpScout attachment for $fileName: " . $e->getMessage());
 
-                // For whatever reason the upload failed, let's create a private note indicating containing a
+                // For whatever reason the upload failed, let's create a private note containing a
                 // link where the attachment can be viewed
                 $note = new Note();
                 $note->setType('note');
@@ -355,7 +355,7 @@ class TicketProcessor implements ProcessorInterface
                                     return $consoleCommand->getGrooveClient()->customers()->find(['customer_email' => $customerEmail])['customer'];
                                 });
                             $helpscoutPersonRef = new PersonRef((object)array('email' => $grooveCustomer['email'], 'type' => 'customer'));
-                            list($firstName, $lastName) = APIHelper::extractFirstAndLastNameFromFullName($grooveCustomer['name']);
+                            list($firstName, $lastName) = APIHelper::extractFirstAndLastNameFromFullName($grooveCustomer['name'], $consoleCommand);
                             $helpscoutPersonRef->setFirstName($firstName);
                             $helpscoutPersonRef->setLastName($lastName);
                             $conversation->setCustomer($helpscoutPersonRef);

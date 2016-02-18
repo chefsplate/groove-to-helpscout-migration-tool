@@ -160,16 +160,11 @@ class APIHelper
 
     /**
      * @param $fullName string
+     * @param $consoleCommand SyncCommandBase
      * @return array
      */
-    public static function extractFirstAndLastNameFromFullName($fullName)
+    public static function extractFirstAndLastNameFromFullName($fullName, $consoleCommand)
     {
-        // long names will throw an "org.hibernate.exception.DataException : Data truncation:
-        // Data too long for column 'cus_full_name' at row 1" exception on HelpScout's end
-        // we should capture it on our end first
-        if (strlen($fullName) > 60) {
-            throw new ValidationException("Failed to extract first and last name from \"$fullName\": Full name exceeds 60 characters.");
-        }
         $spacePos = strpos($fullName, ' ');
         $firstName = null;
         $lastName = null;
@@ -179,6 +174,20 @@ class APIHelper
         } else {
             $firstName = $fullName;
         }
+        // long names will throw an "org.hibernate.exception.DataException : Data truncation:
+        // Data too long for column 'cus_full_name' at row 1" exception on HelpScout's end
+        // we should accommodate for it on our end first
+        if (strlen($firstName) > 40) {
+            $truncated = substr($firstName, 0, 40);
+            $consoleCommand->warn("First name \"$firstName\" exceeds maximum 40 allowable characters. Truncating to \"$truncated\"");
+            $firstName = $truncated;
+        }
+        if (strlen($lastName) > 40) {
+            $truncated = substr($lastName, 0, 40);
+            $consoleCommand->warn("Last name \"$lastName\" exceeds maximum 40 allowable characters. Truncating to \"$truncated\"");
+            $lastName = $truncated;
+        }
+
         return array($firstName, $lastName);
     }
 
