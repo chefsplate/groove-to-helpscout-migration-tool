@@ -14,6 +14,9 @@ use HelpScout\ApiException;
 use HelpScout\Collection;
 use HelpScout\model\Mailbox;
 use HelpScout\model\User;
+use Maatwebsite\Excel\Classes\LaravelExcelWorksheet;
+use Maatwebsite\Excel\Facades\Excel;
+use Maatwebsite\Excel\Writers\LaravelExcelWriter;
 
 class APIHelper
 {
@@ -211,5 +214,33 @@ class APIHelper
             }
         }
         return $output;
+    }
+
+    /**
+     * Create and save a CSV file with the given filename and contents array.
+     *
+     * @param $filename string name of the file; by default, exported to app/storage/exports; this can be changed in excel.php
+     * @param $contentsArray array an array of rows, followed by an array of column data
+     */
+    public static function exportArrayToCSV($filename, $contentsArray) {
+        Excel::create(
+            $filename, function($excel) use ($contentsArray) {
+            /* @var $excel LaravelExcelWriter */
+            $excel->sheet('Sheet1', function($sheet) use ($contentsArray) {
+                /* @var $sheet LaravelExcelWorksheet */
+                $sheet->fromArray($contentsArray);
+            });
+        })->store('csv');
+    }
+
+    public static function convertErrorMappingArrayToCSVArray($errorMapping)
+    {
+        $results = array();
+        foreach($errorMapping as $errorType => $issues) {
+            foreach($issues as $issue) {
+                $results []= array($errorType, $issue);
+            }
+        }
+        return $results;
     }
 }

@@ -41,7 +41,11 @@ class CustomerPublisher implements PublisherInterface
                         $client->createCustomer($customer);
                     });
                 } catch (ApiException $e) {
-                    $consoleCommand->error("Failed to upload HelpScout customer (" . implode(',', $customer->getEmails()) . ")" . ". Message was: " . APIHelper::formatApiExceptionArray($e));
+//                    $customerEmails = array_map(function($emailEntry) {
+//                        /* @var $emailEntry \HelpScout\model\customer\EmailEntry */
+//                        return $emailEntry->getValue();
+//                    }, $customer->getEmails());
+//                    $consoleCommand->error("Failed to upload HelpScout customer (" . implode(',', $customerEmails) . ")" . ". Message was: " . APIHelper::formatApiExceptionArray($e));
                     foreach ($e->getErrors() as $error) {
                         $errorMapping[$error['message']] [] = "[" . $error['property'] . "] " . $error['message'] . ": " . $error['value'];
                         $consoleCommand->getProgressBar()->setMessage('Error: [' . $error['property'] . '] ' . $error['message'] . ' (' . $error['value'] . ')' . str_pad(' ', 20));
@@ -57,8 +61,10 @@ class CustomerPublisher implements PublisherInterface
             }
 
             if (sizeof($errorMapping) > 0) {
-                // TODO: output to a CSV or Laravel logger instead
-//                $consoleCommand->error(print_r($errorMapping, TRUE));
+                $filename = 'sync-customers-' . date('YmdHis');
+                $contents = APIHelper::convertErrorMappingArrayToCSVArray($errorMapping);
+                APIHelper::exportArrayToCSV($filename, $contents);
+                $consoleCommand->warn("\nEncountered " . count($contents) . " errors, which have been exported to $filename.csv (default location: storage/exports)");
             }
         };
     }

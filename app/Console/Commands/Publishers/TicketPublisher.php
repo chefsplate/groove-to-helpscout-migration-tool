@@ -77,8 +77,10 @@ class TicketPublisher implements PublisherInterface
             }
 
             if (sizeof($errorMapping) > 0) {
-                // TODO: output to a CSV instead or Laravel logger
-//                $consoleCommand->error(print_r($errorMapping, TRUE));
+                $filename = 'sync-tickets-' . date('YmdHis');
+                $contents = APIHelper::convertErrorMappingArrayToCSVArray($errorMapping);
+                APIHelper::exportArrayToCSV($filename, $contents);
+                $consoleCommand->warn("\nEncountered " . count($contents) . " errors, which have been exported to $filename.csv (default location: storage/exports)");
             }
         };
     }
