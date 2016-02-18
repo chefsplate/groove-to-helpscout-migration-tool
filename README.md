@@ -14,8 +14,9 @@ This ETL tool uses the Acquire -> Process -> Publish sequence of phases as sugge
 
 We leverage the following libraries via Composer:
 - [Laravel](https://laravel.com/docs/5.1/installation) (for console commands)
-- [helpscout/api](https://github.com/helpscout/helpscout-api-php)
-- [jadb/php-groovehq](https://github.com/jadb/php-groovehq)
+- [helpscout/api](https://github.com/helpscout/helpscout-api-php) (HelpScout API Client)
+- [jadb/php-groovehq](https://github.com/jadb/php-groovehq) (Groove API Client)
+- [Laravel Excel](http://www.maatwebsite.nl/laravel-excel/docs) (for exporting results to CSV)
 
 ## Usage
 

@@ -9,7 +9,8 @@
         "laravel/framework": "5.2.*",
         "helpscout/api": ">=1.7",
         "jadb/groovehq": "dev-master",
-        "predis/predis": "~1.0"
+        "predis/predis": "~1.0",
+        "maatwebsite/excel": "~2.1.0"
     },
     "require-dev": {
         "fzaninotto/faker": "~1.4",
