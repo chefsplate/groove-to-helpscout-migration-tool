@@ -9,6 +9,7 @@
 namespace App\Console\Commands;
 
 
+use App\Console\Commands\Processors\Exceptions\ValidationException;
 use Exception;
 use HelpScout\ApiException;
 use HelpScout\Collection;
@@ -163,6 +164,12 @@ class APIHelper
      */
     public static function extractFirstAndLastNameFromFullName($fullName)
     {
+        // long names will throw an "org.hibernate.exception.DataException : Data truncation:
+        // Data too long for column 'cus_full_name' at row 1" exception on HelpScout's end
+        // we should capture it on our end first
+        if (strlen($fullName) > 60) {
+            throw new ValidationException("Failed to extract first and last name from \"$fullName\": Full name exceeds 60 characters.");
+        }
         $spacePos = strpos($fullName, ' ');
         $firstName = null;
         $lastName = null;
