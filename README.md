@@ -111,14 +111,6 @@ Please be aware of the following when importing:
 
 For help moving from Zendesk, Desk or UserVoice, check out the [HelpScout knowledge base](http://docs.helpscout.net/category/74-copying-email-to-help-scout).
 
-## TODOs
-
-The tool currently does not perform:
-
-- Restarting only failed migration tasks
-- Starting process again after failed or timed out migration; restarting from a given page number/ID/timestamp
-- Export CSV of imports with issues
-
 ## Challenges
 
 - Long-running process (may take hours; batches may fail anytime).
