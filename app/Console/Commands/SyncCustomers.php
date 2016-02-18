@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Console\Commands\Processors\CustomerProcessor;
 use App\Console\Commands\Publishers\CustomerPublisher;
+use DateTime;
 use Symfony\Component\Console\Formatter\OutputFormatterStyle;
 
 class SyncCustomers extends SyncCommandBase
@@ -42,6 +43,9 @@ class SyncCustomers extends SyncCommandBase
         $style = new OutputFormatterStyle('white', 'black', array('bold'));
         $this->output->getFormatter()->setStyle('header', $style);
 
+        $now = new DateTime();
+        $this->info("Starting sync of Groove customers at " . $now->format('c'));
+
         // Acquire and process
         // -------------------
 
@@ -77,6 +81,9 @@ class SyncCustomers extends SyncCommandBase
         }
 
         $this->info("\nCompleted migrating $numberCustomers customers.");
+
+        $now = new DateTime();
+        $this->info("[FINISH] Sync of Groove customers completed at " . $now->format('c'));
     }
 
 }

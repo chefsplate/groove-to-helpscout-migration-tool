@@ -7,6 +7,7 @@ use HelpScout\ApiClient;
 use HelpScout\ApiException;
 use Illuminate\Console\Command;
 use Symfony\Component\Console\Helper\ProgressBar;
+use Log;
 
 class SyncCommandBase extends Command
 {
@@ -86,50 +87,62 @@ class SyncCommandBase extends Command
     }
 
     // COMMAND OVERRIDES
-    // Clear the progress bar prior to invoking any of the command console's output methods
+    // Intention: Clear the progress bar prior to invoking any of the command console's output methods
     // Re-display the progress bar after rendering the output line
-/*
+    // Log the output string to Laravel's Monolog log
+
     private function isProgressBarActive() {
         return $this->getProgressBar()
             && $this->getProgressBar()->getMaxSteps() !== $this->getProgressBar()->getProgress();
     }
 
-    public function info($string, $verbosity = null) {
-        if ($this->isProgressBarActive()) { $this->getProgressBar()->clear(); parent::info(''); }
-        parent::info($string, $verbosity);
-        if ($this->isProgressBarActive()) { $this->getProgressBar()->display(); }
-    }
+//    public function info($string, $verbosity = null) {
+//        if ($this->isProgressBarActive()) { $this->getProgressBar()->clear(); parent::info(''); }
+//        parent::info($string, $verbosity); // this implicitly calls $this->line()
+//        if ($this->isProgressBarActive()) { $this->getProgressBar()->display(); }
+//    }
 
     public function line($string, $style = null, $verbosity = null) {
-        if ($this->isProgressBarActive()) { $this->getProgressBar()->clear(); parent::line(''); }
         parent::line($string, $style, $verbosity);
-        if ($this->isProgressBarActive()) { $this->getProgressBar()->display(); }
+        $logString = trim($string);
+        switch ($style) {
+            case 'comment':
+            case 'question':
+                Log::debug($logString);
+                break;
+            case 'info':
+                Log::info($logString);
+                break;
+            case 'error':
+                Log::error($logString);
+                break;
+            case 'warning':
+                Log::warning($logString);
+                break;
+            default:
+                Log::debug($logString);
+                break;
+        }
     }
 
+    /*
     public function comment($string, $verbosity = null) {
-        if ($this->isProgressBarActive()) { $this->getProgressBar()->clear(); parent::comment(''); }
-        parent::comment($string, $verbosity);
-        if ($this->isProgressBarActive()) { $this->getProgressBar()->display(); }
+        parent::comment($string, $verbosity); // implicitly calls $this->line()
     }
 
     public function question($string, $verbosity = null) {
-        if ($this->isProgressBarActive()) { $this->getProgressBar()->clear(); parent::question(''); }
-        parent::question($string, $verbosity);
-        if ($this->isProgressBarActive()) { $this->getProgressBar()->display(); }
+        parent::question($string, $verbosity); // implicitly calls $this->line()
     }
 
     public function error($string, $verbosity = null) {
-        if ($this->isProgressBarActive()) { $this->getProgressBar()->clear(); parent::error(''); }
-        parent::error($string, $verbosity);
-        if ($this->isProgressBarActive()) { $this->getProgressBar()->display(); }
+        parent::error($string, $verbosity); // implicitly calls $this->line()
     }
 
     public function warn($string, $verbosity = null) {
-        if ($this->isProgressBarActive()) { $this->getProgressBar()->clear(); parent::warn(''); }
-        parent::warn($string, $verbosity);
-        if ($this->isProgressBarActive()) { $this->getProgressBar()->display(); }
+        parent::warn($string, $verbosity); // implicitly calls $this->line()
     }
-*/
+    */
+
     /**
      * TODO change interface to method passing in configuration object (which is validated)
      *

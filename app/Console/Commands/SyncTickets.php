@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Console\Commands\Processors\TicketProcessor;
 use App\Console\Commands\Publishers\TicketPublisher;
+use DateTime;
 use GuzzleHttp\Command\Exception\CommandClientException;
 use Symfony\Component\Console\Formatter\OutputFormatterStyle;
 
@@ -47,6 +48,9 @@ class SyncTickets extends SyncCommandBase
         $style = new OutputFormatterStyle('white', 'black', array('bold'));
         $this->output->getFormatter()->setStyle('header', $style);
 
+        $now = new DateTime();
+        $this->info("[START] Starting sync of Groove tickets and messages at " . $now->format('c'));
+
         // Initial validation
         $this->performInitialValidation();
 
@@ -58,6 +62,9 @@ class SyncTickets extends SyncCommandBase
         } else {
             $this->migrateAllTickets();
         }
+
+        $now = new DateTime();
+        $this->info("[FINISH] Sync of Groove tickets and messages completed at " . $now->format('c'));
     }
 
     private function performInitialValidation()
