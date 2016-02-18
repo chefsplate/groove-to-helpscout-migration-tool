@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use DateTime;
 use GrooveHQ\Client as GrooveClient;
 use HelpScout\ApiClient;
 use HelpScout\ApiException;
@@ -189,5 +190,33 @@ class SyncCommandBase extends Command
             // don't do anything
         }
         return $response;
+    }
+
+    /**
+     * Outputs an ETA display based on current progress
+     *
+     * @param $startTime DateTime
+     * @param $startPage int
+     * @param $pageNumber int
+     * @param $totalPages int
+     */
+    protected function displayETA($startTime, $startPage, $pageNumber, $totalPages)
+    {
+        if ($pageNumber === $startPage) {
+            $this->info('Approximate ETA: TBD');
+            return;
+        }
+
+        $pagesProcessed = $pageNumber - $startPage;
+        $remaining = $totalPages - $pageNumber + 1;
+        $now = new DateTime();
+        $secondsDiff = $now->getTimestamp() - $startTime->getTimestamp();
+        $secondsPerPage = $secondsDiff / $pagesProcessed;
+        $timeRemaining = $secondsPerPage * $remaining;
+
+        $hours = floor($timeRemaining / 3600);
+        $minutes = floor($timeRemaining / 60) % 60;
+        $seconds = $timeRemaining % 60;
+        $this->info("Approximate ETA: " . sprintf("%02d:%02d:%02d", $hours, $minutes, $seconds) . " based on $remaining page" . ($remaining == 1 ? "" : "s") . " remaining.");
     }
 }

@@ -43,13 +43,14 @@ class SyncCustomers extends SyncCommandBase
         $style = new OutputFormatterStyle('white', 'black', array('bold'));
         $this->output->getFormatter()->setStyle('header', $style);
 
-        $now = new DateTime();
-        $this->info("Starting sync of Groove customers at " . $now->format('c'));
+        $this->info("Starting sync of Groove customers at " . date('c'));
 
         // Acquire and process
         // -------------------
 
         $pageNumber = $this->option('startPage');
+        $startPage = $pageNumber;
+        $startTime = new DateTime();
 
         $customersService = $this->getGrooveClient()->customers();
 
@@ -69,6 +70,7 @@ class SyncCustomers extends SyncCommandBase
 
         while ($pageNumber <= $totalPages) {
             $this->line("\n\n=== Starting page " . $pageNumber . " of $totalPages ($totalCustomers total customers) ===", 'header');
+            $this->displayETA($startTime, $startPage, $pageNumber, $totalPages);
             $grooveCustomersListResponse = $this->makeRateLimitedRequest(
                 GROOVE,
                 function () use ($customersService, $pageNumber) {
@@ -82,8 +84,6 @@ class SyncCustomers extends SyncCommandBase
 
         $this->info("\nCompleted migrating $numberCustomers customers.");
 
-        $now = new DateTime();
-        $this->info("[FINISH] Sync of Groove customers completed at " . $now->format('c'));
+        $this->info("[FINISH] Sync of Groove customers completed at " . date('c'));
     }
-
 }

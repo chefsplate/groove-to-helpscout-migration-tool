@@ -48,8 +48,7 @@ class SyncTickets extends SyncCommandBase
         $style = new OutputFormatterStyle('white', 'black', array('bold'));
         $this->output->getFormatter()->setStyle('header', $style);
 
-        $now = new DateTime();
-        $this->info("[START] Starting sync of Groove tickets and messages at " . $now->format('c'));
+        $this->info("[START] Starting sync of Groove tickets and messages at " . date('c'));
 
         // Initial validation
         $this->performInitialValidation();
@@ -63,8 +62,7 @@ class SyncTickets extends SyncCommandBase
             $this->migrateAllTickets();
         }
 
-        $now = new DateTime();
-        $this->info("[FINISH] Sync of Groove tickets and messages completed at " . $now->format('c'));
+        $this->info("[FINISH] Sync of Groove tickets and messages completed at " . date('c'));
     }
 
     private function performInitialValidation()
@@ -160,6 +158,8 @@ class SyncTickets extends SyncCommandBase
     private function migrateAllTickets()
     {
         $pageNumber = $this->option('startPage');
+        $startPage = $pageNumber;
+        $startTime = new DateTime();
 
         $ticketsService = $this->getGrooveClient()->tickets();
 
@@ -179,6 +179,7 @@ class SyncTickets extends SyncCommandBase
 
         while ($pageNumber <= $totalPages) {
             $this->line("\n\n=== Starting page " . $pageNumber . " of $totalPages ($totalTickets total tickets) ===", 'header');
+            $this->displayETA($startTime, $startPage, $pageNumber, $totalPages);
             $grooveTicketsResponse = $this->makeRateLimitedRequest(
                 GROOVE,
                 function () use ($ticketsService, $pageNumber) {
