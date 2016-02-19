@@ -10,7 +10,7 @@ This ETL tool uses the Acquire -> Process -> Publish sequence of phases as sugge
 - `allow_url_fopen` must be allowed (for attachment downloads)
 - [Composer](https://getcomposer.org/download/)
 
-Yum packages: httpd24 php56 php56-mbstring php56-pdo
+Yum packages: `httpd24 php56 php56-mbstring php56-pdo`
 
 ### Dependencies
 
@@ -31,7 +31,7 @@ Ensure mailbox names within HelpScout correspond to the same mailbox names as Gr
 ### Within HelpScout
 
 Create all of your agent (team, user & mailbox) accounts in HelpScout first. Our tool will need to map the Groove agent 
-email addresses with HelpScout user emails and Groove mailboxes to HelpScout mailboxes (manual input may be required).
+email addresses with HelpScout user emails and Groove mailboxes to HelpScout mailboxes (this step is manual).
 
 ### CLI Usage
 

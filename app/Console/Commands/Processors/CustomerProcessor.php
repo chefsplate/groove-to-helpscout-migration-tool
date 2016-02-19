@@ -47,8 +47,10 @@ class CustomerProcessor implements ProcessorInterface
                 // Groove: email, name, about, twitter_username, title, company_name, phone_number, location, website_url, linkedin_username
                 // HelpScout Customer (subset of Person): firstName, lastName, photoUrl, photoType, gender, age, organization, jobTitle, location, createdAt, modifiedAt
                 // HelpScout Person: id, firstName, lastName, email, phone, type (user, customer, team)
-
+                $grooveCustomerEmail = $grooveCustomer['email'];
                 try {
+                    // TODO: create hybrid model that contains both the Groove and Customer objects
+
                     $customer = new Customer();
 
                     // Groove doesn't separate these fields
@@ -58,9 +60,21 @@ class CustomerProcessor implements ProcessorInterface
                     $customer->setFirstName($firstName);
                     $customer->setLastName($lastName);
 
-                    $customer->setOrganization($grooveCustomer['company_name']);
+                    // Organization must be 60 characters or less
+                    $customerOrganization = $grooveCustomer['company_name'];
+                    if ($customerOrganization && strlen($customerOrganization) > 60) {
+                        $consoleCommand->warn("Warning: Customer organization \"$customerOrganization\" must be 60 characters or less. Truncating. (email: $grooveCustomerEmail)");
+                        $customerOrganization = substr($customerOrganization, 0, 60);
+                    }
+                    $customer->setOrganization($customerOrganization);
+                    
                     // Job title must be 60 characters or less
-                    $customer->setJobTitle(substr($grooveCustomer['title'], 0, 60));
+                    $customerJobTitle = $grooveCustomer['title'];
+                    if ($customerJobTitle && strlen($customerJobTitle) > 60) {
+                        $consoleCommand->warn("Warning: Customer job title \"$customerJobTitle\" must be 60 characters or less. Truncating. (email: $grooveCustomerEmail)");
+                        $customerJobTitle = substr($customerJobTitle, 0, 60);
+                    }
+                    $customer->setJobTitle($customerJobTitle);
                     $customer->setLocation($grooveCustomer['location']);
                     $customer->setBackground($grooveCustomer['about']);
 
@@ -147,7 +161,6 @@ class CustomerProcessor implements ProcessorInterface
 
                     $processedCustomers [] = $customer;
                 } catch (ApiException $e) {
-                    $grooveCustomerEmail = $grooveCustomer['email'];
                     $grooveCustomerName = $grooveCustomer['name'];
                     $consoleCommand->error("Failed to create HelpScout customer for Groove customer \"$grooveCustomerName\" ($grooveCustomerEmail). Message was: " . APIHelper::formatApiExceptionArray($e));
                 }
