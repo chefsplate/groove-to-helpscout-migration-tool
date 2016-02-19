@@ -3,6 +3,7 @@
 namespace App\Console\Commands\Processors;
 
 use App\Console\Commands\APIHelper;
+use App\Console\Commands\Models\HybridConversation;
 use App\Console\Commands\Processors\Exceptions\ValidationException;
 use App\Console\Commands\SyncCommandBase;
 use DateTime;
@@ -52,6 +53,7 @@ class TicketProcessor implements ProcessorInterface
     {
         $pageNumber = 1;
         $helpscoutThreads = array();
+        $grooveTicketNumber = $grooveTicket['number'];
 
         do {
             /* @var $grooveMessages array */
@@ -82,7 +84,7 @@ class TicketProcessor implements ProcessorInterface
                     if ($status) {
                         $thread->setStatus($status);
                     } else {
-                        $consoleCommand->error("Unknown state provided: " . $grooveTicket['state']);
+                        $consoleCommand->error("Unknown state provided for Groove ticket #$grooveTicketNumber: " . $grooveTicket['state']);
                     }
 
                     // CreatedBy is a PersonRef - type must be 'user' for messages or notes
@@ -106,7 +108,7 @@ class TicketProcessor implements ProcessorInterface
                         } else {
                             // the customer could be blank - we need to fetch extra details from Groove
                             // perhaps the sync-customers was not run?
-                            $consoleCommand->warn('Could not find HelpScout customer for ' . $authorEmailAddress . '. Was sync-customers command run?');
+                            $consoleCommand->warn('Warning: Could not find HelpScout customer for ' . $authorEmailAddress . " (Groove ticket #$grooveTicketNumber). Was sync-customers command run?");
                             $grooveCustomer = $consoleCommand->makeRateLimitedRequest(
                                 GROOVE,
                                 function () use ($consoleCommand, $grooveMessage) {
@@ -125,7 +127,7 @@ class TicketProcessor implements ProcessorInterface
                         // person is an agent/user
                         $matchingUser = APIHelper::findMatchingUserWithEmail($authorEmailAddress);
                         if (!$matchingUser) {
-                            throw new ValidationException("No corresponding user found for: $authorEmailAddress");
+                            throw new ValidationException("No corresponding user found for: $authorEmailAddress (Groove ticket #$grooveTicketNumber");
                         }
                         // set ID only on notes
                         if ($grooveMessage['note']) {
@@ -148,7 +150,7 @@ class TicketProcessor implements ProcessorInterface
                         }
                     }
 
-                    list($attachments, $failedAttachmentNotes) = self::retrieveAttachmentsForGrooveMessage($consoleCommand, $grooveMessage, $status);
+                    list($attachments, $failedAttachmentNotes) = self::retrieveAttachmentsForGrooveMessage($consoleCommand, $grooveMessage, $status, $grooveTicket);
                     $thread->setAttachments($attachments);
 
                     $helpscoutThreads [] = $thread;
@@ -157,7 +159,7 @@ class TicketProcessor implements ProcessorInterface
                         $helpscoutThreads = array_merge($helpscoutThreads, $failedAttachmentNotes);
                     }
                 } catch (ApiException $e) {
-                    $consoleCommand->error("Failed to create HelpScout thread for Groove message (" . $grooveMessage['href'] . " created by $authorEmailAddress at " . $grooveMessage['created_at'] . "). Message was: \n" . APIHelper::formatApiExceptionArray($e));
+                    $consoleCommand->error("Failed to create HelpScout thread for Groove message (" . $grooveMessage['href'] . " created by $authorEmailAddress at " . $grooveMessage['created_at'] . ", ticket #$grooveTicketNumber). Message was: \n" . APIHelper::formatApiExceptionArray($e));
                 }
             }
             $pageNumber++;
@@ -191,13 +193,15 @@ class TicketProcessor implements ProcessorInterface
      * @param $consoleCommand SyncCommandBase
      * @param $grooveMessage array
      * @param $ticketStatus
+     * @param $grooveTicket
      * @return array
      * @throws ApiException
      * @throws \Exception
      * @internal param array $grooveTicket
      */
-    private static function retrieveAttachmentsForGrooveMessage($consoleCommand, $grooveMessage, $ticketStatus)
+    private static function retrieveAttachmentsForGrooveMessage($consoleCommand, $grooveMessage, $ticketStatus, $grooveTicket)
     {
+        $grooveTicketNumber = $grooveTicket['number'];
         if (!isset($grooveMessage['links']['attachments'])) {
             return null;
         }
@@ -225,7 +229,7 @@ class TicketProcessor implements ProcessorInterface
             // creating the attachment to associate it with a ticket.
             $fileName = $grooveAttachment['filename'];
             $fileSize = $grooveAttachment['size'];
-            $consoleCommand->info("Attachment $fileName found ($fileSize bytes). Uploading to HelpScout...");
+            $consoleCommand->info("Groove message #$grooveMessageId (ticket #$grooveTicketNumber): Attachment $fileName found ($fileSize bytes). Uploading to HelpScout...");
             $helpscoutAttachment = new Attachment();
             $helpscoutAttachment->setFileName($fileName);
 
@@ -285,6 +289,7 @@ class TicketProcessor implements ProcessorInterface
 
             foreach ($ticketsList as $grooveTicket) {
                 $customerEmail = null;
+                $grooveTicketNumber = $grooveTicket['number'];
                 try {
                     if ($checkForDuplicates) {
                         /* @var $searchResults Collection */
@@ -302,12 +307,14 @@ class TicketProcessor implements ProcessorInterface
                                 }
                             }
                             if ($helpscoutConversationNumber) {
-                                $consoleCommand->warn("Warning: Duplicate ticket \"" . $grooveTicket['title'] . "\" on $dateString already uploaded to HelpScout (conversation #$helpscoutConversationNumber). Skipping.");
+                                $consoleCommand->warn("Warning: Duplicate ticket #$grooveTicketNumber \"" . $grooveTicket['title'] . "\" on $dateString already uploaded to HelpScout (conversation #$helpscoutConversationNumber). Skipping.");
                                 continue;
                             }
                         }
                     }
 
+                    $hybridConversation = new HybridConversation();
+                    $hybridConversation->setGrooveTicketNumber($grooveTicketNumber);
                     $conversation = new Conversation();
                     $conversation->setType('email');
                     $conversation->setSubject($grooveTicket['title']);
@@ -363,7 +370,7 @@ class TicketProcessor implements ProcessorInterface
                         }
 
                     } else {
-                        throw new ApiException("No customer defined for ticket: " . $grooveTicket['number']);
+                        throw new ApiException("No customer defined for ticket: #$grooveTicketNumber");
                     }
 
                     // CreatedAt
@@ -376,20 +383,21 @@ class TicketProcessor implements ProcessorInterface
                     if ($status) {
                         $conversation->setStatus($status);
                     } else {
-                        $consoleCommand->error("Unknown state provided: " . $grooveTicket['state']);
+                        $consoleCommand->error("Unknown state provided for Groove ticket #$grooveTicketNumber: " . $grooveTicket['state']);
                     }
 
-                    $processedTickets [] = $conversation;
+                    $hybridConversation->setConversation($conversation);
+                    $processedTickets [] = $hybridConversation;
                 } catch (ApiException $e) {
-                    $consoleCommand->error("Failed to create HelpScout conversation for Groove ticket (#" . $grooveTicket['number'] . " created by $customerEmail at " . $grooveTicket['created_at'] . "). Message was: \n" . APIHelper::formatApiExceptionArray($e));
+                    $consoleCommand->error("Failed to create HelpScout conversation for Groove ticket (#$grooveTicketNumber created by $customerEmail at " . $grooveTicket['created_at'] . "). Message was: \n" . APIHelper::formatApiExceptionArray($e));
                 } catch (\CurlException $ce) {
-                    $errorMessage = "CurlException encountered for ticket " . $grooveTicket['number'] . " \"" . $grooveTicket['summary'] . "\"";
+                    $errorMessage = "CurlException encountered for ticket #$grooveTicketNumber \"" . $grooveTicket['summary'] . "\"";
                     $consoleCommand->error($errorMessage . ": " . $ce->getMessage());
                 } catch (\ErrorException $errex) {
-                    $errorMessage = "Error encountered for ticket " . $grooveTicket['number'] . " \"" . $grooveTicket['summary'] . "\"";
+                    $errorMessage = "Error encountered for ticket #$grooveTicketNumber \"" . $grooveTicket['summary'] . "\"";
                     $consoleCommand->error($errorMessage . ": " . $errex->getMessage());
                 } catch (\Exception $ex) {
-                    $errorMessage = "Exception encountered for ticket " . $grooveTicket['number'] . " \"" . $grooveTicket['summary'] . "\"";
+                    $errorMessage = "Exception encountered for ticket #$grooveTicketNumber \"" . $grooveTicket['summary'] . "\"";
                     $consoleCommand->error($errorMessage . ": " . $ex->getMessage());
                 }
             }

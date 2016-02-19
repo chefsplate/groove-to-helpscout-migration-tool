@@ -3,8 +3,10 @@
 namespace App\Console\Commands\Publishers;
 
 use App\Console\Commands\APIHelper;
+use App\Console\Commands\Models\HybridConversation;
 use App\Console\Commands\SyncCommandBase;
 use HelpScout\ApiException;
+use HelpScout\model\Conversation;
 
 class TicketPublisher implements PublisherInterface
 {
@@ -34,8 +36,11 @@ class TicketPublisher implements PublisherInterface
 
             $consoleCommand->createProgressBar(count($conversationsList));
 
-            /* @var $conversation \HelpScout\model\Conversation */
-            foreach ($conversationsList as $conversation) {
+            /* @var $hybridConversation HybridConversation */
+            foreach ($conversationsList as $hybridConversation) {
+                /* @var $conversation Conversation */
+                $conversation = $hybridConversation->getConversation();
+                $grooveTicketNumber = $hybridConversation->getGrooveTicketNumber();
                 try {
                     $client = $consoleCommand->getHelpScoutClient();
                     $createConversationResponse = $consoleCommand->makeRateLimitedRequest(HELPSCOUT, function () use ($client, $conversation) {
@@ -46,25 +51,25 @@ class TicketPublisher implements PublisherInterface
                         $conversation->getCreatedBy()->getEmail()
                         : "user #" . $conversation->getCreatedBy()->getId();
                     $consoleCommand->error("Failed to upload HelpScout conversation \"" . $conversation->getSubject()
-                        . "\" by " . $createdBy . " at " . $conversation->getCreatedAt() . ". Message was: \n" . APIHelper::formatApiExceptionArray($e));
+                        . "\" by " . $createdBy . " at " . $conversation->getCreatedAt() . " (Groove ticket #$grooveTicketNumber). Message was: \n" . APIHelper::formatApiExceptionArray($e));
                     if ($e->getErrors()) {
                         foreach ($e->getErrors() as $error) {
-                            $errorMapping[$error['message']] [] = $error;
+                            $errorMapping[$error['message']] [] = $error . " (Groove ticket #$grooveTicketNumber)";
                             $consoleCommand->getProgressBar()->setMessage('Error: [' . $error['property'] . '] ' . $error['message'] . ' (' . $error['value'] . ')' . str_pad(' ', 20));
                         }
                     } else {
-                        $errorMapping[$e->getMessage()] [] = "[" . $conversation->getCreatedAt()->format('c') . "] " . $conversation->getSubject();
+                        $errorMapping[$e->getMessage()] [] = "[" . $conversation->getCreatedAt()->format('c') . "] " . $conversation->getSubject() . " (Groove ticket #$grooveTicketNumber)";
                     }
                 } catch (\CurlException $ce) {
-                    $errorMessage = "CurlException encountered for ticket \"" . $conversation->getSubject() . "\" (created by " . $conversation->getCreatedBy()->getEmail() . " at " . $conversation->getCreatedAt() . ")";
+                    $errorMessage = "CurlException encountered while publishing Groove ticket #$grooveTicketNumber \"" . $conversation->getSubject() . "\" (created by " . $conversation->getCreatedBy()->getEmail() . " at " . $conversation->getCreatedAt() . ")";
                     $consoleCommand->error($errorMessage . ": " . $ce->getMessage());
                     $errorMapping[$ce->getMessage()] []= $errorMessage;
                 } catch (\ErrorException $errex) {
-                    $errorMessage = "Exception encountered for ticket \"" . $conversation->getSubject() . "\" (created by " . $conversation->getCreatedBy()->getEmail() . " at " . $conversation->getCreatedAt() . ")";
+                    $errorMessage = "Exception encountered while publishing Groove ticket #$grooveTicketNumber \"" . $conversation->getSubject() . "\" (created by " . $conversation->getCreatedBy()->getEmail() . " at " . $conversation->getCreatedAt() . ")";
                     $consoleCommand->error($errorMessage . ": " . $errex->getMessage());
                     $errorMapping[$errex->getMessage()] []= $errorMessage;
                 } catch (\Exception $ex) {
-                    $errorMessage = "Exception encountered for ticket \"" . $conversation->getSubject() . "\" (created by " . $conversation->getCreatedBy()->getEmail() . " at " . $conversation->getCreatedAt() . ")";
+                    $errorMessage = "Exception encountered while publishing Groove ticket #$grooveTicketNumber \"" . $conversation->getSubject() . "\" (created by " . $conversation->getCreatedBy()->getEmail() . " at " . $conversation->getCreatedAt() . ")";
                     $consoleCommand->error($errorMessage . ": " . $ex->getMessage());
                     $errorMapping[$ex->getMessage()] []= $errorMessage;
                 }
