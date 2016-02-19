@@ -6,9 +6,11 @@ This ETL tool uses the Acquire -> Process -> Publish sequence of phases as sugge
 
 ## Requirements
 
-- PHP 5.4+
+- PHP 5.4+ (including mbstring, pdo extensions)
 - `allow_url_fopen` must be allowed (for attachment downloads)
 - [Composer](https://getcomposer.org/download/)
+
+Yum packages: httpd24 php56 php56-mbstring php56-pdo
 
 ### Dependencies
 
