@@ -54,9 +54,13 @@ php artisan sync-tickets
 ```
 to migrate Groove tickets, messages, images, attachments and tags.
 
-The `sync-tickets` command also accepts the `startPage` optional parameter as described above.
+The `sync-tickets` command also accepts the `startPage` and `stopPage` optional parameters. 
+For example, to fetch only the tickets on pages 10 to 20, execute the following command:
+```
+php artisan sync-customers --startPage=10 --stopPage=20
+```
 
-If, for any reason, a particular ticket fails to migrate (e.g. attachment fails), you can 
+If, for any reason, a particular ticket fails to migrate (e.g. connectivity issues), you can 
 redo `sync-tickets` with just that particular ticket number:
   
 ```

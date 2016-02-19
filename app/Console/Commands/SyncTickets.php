@@ -16,7 +16,7 @@ class SyncTickets extends SyncCommandBase
      * @var string
      */
     protected $signature = 'sync-tickets
-                            {--startPage=1 : The starting page } {--checkDuplicates=true : Check whether each ticket has already been uploaded to HelpScout. If so, then don\'t upload a new one. } {tickets? : (Optional) Comma-separated list (no spaces) of specific Groove ticket numbers for syncing. Useful for resuming failed uploads.}';
+                            {--startPage=1 : The starting page } {--stopPage=9999 : The last page to fetch } {--checkDuplicates=true : Check whether each ticket has already been uploaded to HelpScout. If so, then don\'t upload a new one. } {tickets? : (Optional) Comma-separated list (no spaces) of specific Groove ticket numbers for syncing. Useful for resuming failed uploads.}';
 
     /**
      * The console command description.
@@ -158,6 +158,7 @@ class SyncTickets extends SyncCommandBase
     private function migrateAllTickets()
     {
         $pageNumber = $this->option('startPage');
+        $stopPage = $this->option('stopPage');
         $startPage = $pageNumber;
         $startTime = new DateTime();
 
@@ -174,12 +175,18 @@ class SyncTickets extends SyncCommandBase
         if ($pageNumber > $totalPages) {
             $this->warn("Warning: Requested page number $pageNumber is greater than total number of pages ($totalPages).");
         }
+        if ($stopPage > $totalPages) {
+            $stopPage = $totalPages;
+        }
+        if ($stopPage < $pageNumber) {
+            $this->warn("Warning: Requested stop page $stopPage is less than starting page requested $pageNumber. ");
+        }
 
         $numberTickets = 0;
 
-        while ($pageNumber <= $totalPages) {
-            $this->line("\n\n=== Starting page " . $pageNumber . " of $totalPages ($totalTickets total tickets) ===", 'header');
-            $this->displayETA($startTime, $startPage, $pageNumber, $totalPages);
+        while ($pageNumber <= $stopPage) {
+            $this->line("\n\n=== Starting page " . $pageNumber . " of $stopPage ($totalTickets total tickets, $totalPages total pages) ===", 'header');
+            $this->displayETA($startTime, $startPage, $pageNumber, $stopPage);
             $grooveTicketsResponse = $this->makeRateLimitedRequest(
                 GROOVE,
                 function () use ($ticketsService, $pageNumber) {
