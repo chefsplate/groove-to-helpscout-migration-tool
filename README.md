@@ -111,6 +111,20 @@ Please be aware of the following when importing:
 
 For help moving from Zendesk, Desk or UserVoice, check out the [HelpScout knowledge base](http://docs.helpscout.net/category/74-copying-email-to-help-scout).
 
+### Dealing with a large number of attachments
+
+If you are getting FatalErrorExceptions because the memory has been exhausted, you can create a php.ini file with the following contents:
+```
+memory_limit = 256M
+```
+
+You can then run `sync-tickets` using the specified php.ini configuration file:
+```
+php -c php.ini artisan sync-tickets
+```
+
+The memory limit can be increased to 512M if necessary.
+
 ## Challenges
 
 - Long-running process (may take hours; batches may fail anytime).
