@@ -95,7 +95,7 @@ class TicketProcessor implements ProcessorInterface
                     list($authorEmailAddress, $addressType) = self::extractEmailAddressFromGrooveLink($grooveMessage['links']['author']['href'], 'author');
                     $id = null;
                     $personRef = new PersonRef();
-                    if (strcasecmp($addressType, 'customer') === 0) {
+                    if (strcasecmp($addressType, 'customer') === 0 && !$grooveMessage['note']) {
                         /* @var $response Collection */
                         $helpscoutCustomer = $consoleCommand->makeRateLimitedRequest(HELPSCOUT,
                             function () use ($consoleCommand, $authorEmailAddress) {
