@@ -59,7 +59,7 @@ class TicketPublisher implements PublisherInterface
                             $consoleCommand->getProgressBar()->setMessage($errorMessage . str_pad(' ', 20));
                         }
                     } else {
-                        $errorMapping[$e->getMessage()] [] = "[" . $conversation->getCreatedAt()->format('c') . "] " . $conversation->getSubject() . " (Groove ticket #$grooveTicketNumber)";
+                        $errorMapping[$e->getMessage()] [] = "[" . $conversation->getCreatedAt() . "] " . $conversation->getSubject() . " (Groove ticket #$grooveTicketNumber)";
                     }
                 } catch (\CurlException $ce) {
                     $errorMessage = "CurlException encountered while publishing Groove ticket #$grooveTicketNumber \"" . $conversation->getSubject() . "\" (created by " . $conversation->getCreatedBy()->getEmail() . " at " . $conversation->getCreatedAt() . ")";

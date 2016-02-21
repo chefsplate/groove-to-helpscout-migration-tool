@@ -127,7 +127,7 @@ class TicketProcessor implements ProcessorInterface
                         // person is an agent/user
                         $matchingUser = APIHelper::findMatchingUserWithEmail($authorEmailAddress);
                         if (!$matchingUser) {
-                            throw new ValidationException("No corresponding user found for: $authorEmailAddress (Groove ticket #$grooveTicketNumber");
+                            throw new ValidationException("No corresponding user found for: $authorEmailAddress (Groove ticket #$grooveTicketNumber)");
                         }
                         // set ID only on notes
                         if ($grooveMessage['note']) {
