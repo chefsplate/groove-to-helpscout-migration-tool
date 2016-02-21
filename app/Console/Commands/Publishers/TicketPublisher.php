@@ -54,8 +54,9 @@ class TicketPublisher implements PublisherInterface
                         . "\" by " . $createdBy . " at " . $conversation->getCreatedAt() . " (Groove ticket #$grooveTicketNumber). Message was: \n" . APIHelper::formatApiExceptionArray($e));
                     if ($e->getErrors()) {
                         foreach ($e->getErrors() as $error) {
-                            $errorMapping[$error['message']] [] = $error . " (Groove ticket #$grooveTicketNumber)";
-                            $consoleCommand->getProgressBar()->setMessage('Error: [' . $error['property'] . '] ' . $error['message'] . ' (' . $error['value'] . ')' . str_pad(' ', 20));
+                            $errorMessage = 'Error: [' . $error['property'] . '] ' . $error['message'] . ' (value = ' . print_r($error['value'], TRUE) . ") (Groove ticket #$grooveTicketNumber)";
+                            $errorMapping[$error['message']] [] = $errorMessage;
+                            $consoleCommand->getProgressBar()->setMessage($errorMessage . str_pad(' ', 20));
                         }
                     } else {
                         $errorMapping[$e->getMessage()] [] = "[" . $conversation->getCreatedAt()->format('c') . "] " . $conversation->getSubject() . " (Groove ticket #$grooveTicketNumber)";
