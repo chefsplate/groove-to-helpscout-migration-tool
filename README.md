@@ -103,7 +103,7 @@ These will need to be manually created:
 - Reports
 - Webhooks
 
-### Mapping limitations
+### Mapping limitations and known issues
 
 Please be aware of the following when importing:
 - Groove stores full names of customers instead of first and last name
@@ -114,6 +114,7 @@ Please be aware of the following when importing:
 - HelpScout API does not support creation of team members (agents); team members and mailboxes will have to be manually created
 - HelpScout API doesn't appear to have any way of indicating who closed a particular ticket
 - HelpScout API doesn't appear to have any concept of priorities for conversations/threads
+- HelpScout API can only upload attachments up to 7.6 MB in size, although the API documentation indicates 10 MB is supported. The HelpScout team is aware of this and will address this in the future.
 
 For help moving from Zendesk, Desk or UserVoice, check out the [HelpScout knowledge base](http://docs.helpscout.net/category/74-copying-email-to-help-scout).
 
