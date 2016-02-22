@@ -7,6 +7,7 @@ use App\Console\Commands\Models\HybridConversation;
 use App\Console\Commands\Processors\Exceptions\ValidationException;
 use App\Console\Commands\SyncCommandBase;
 use DateTime;
+use Exception;
 use finfo;
 use HelpScout\ApiException;
 use HelpScout\Collection;
@@ -109,19 +110,24 @@ class TicketProcessor implements ProcessorInterface
                             // the customer could be blank - we need to fetch extra details from Groove
                             // perhaps the sync-customers was not run?
                             $consoleCommand->warn('Warning: Could not find HelpScout customer for ' . $authorEmailAddress . " (Groove ticket #$grooveTicketNumber). Was sync-customers command run?");
-                            $grooveCustomer = $consoleCommand->makeRateLimitedRequest(
-                                GROOVE,
-                                function () use ($consoleCommand, $grooveMessage) {
-                                    // we need to make a raw curl request because the current version of the
-                                    // Groove/Guzzle API client does not support disabling urlencoding in URL parameters
-                                    // this is apparently a Groove API requirement
-                                    $url = $grooveMessage['links']['author']['href'] . '?access_token=' . config('services.groove.key');
-                                    $jsonData = json_decode(file_get_contents($url), true);
-                                    return $jsonData['customer'];
-                                });
-                            list($firstName, $lastName) = APIHelper::extractFirstAndLastNameFromFullName($grooveCustomer['name'], $consoleCommand);
-                            $personRef->setFirstName($firstName);
-                            $personRef->setLastName($lastName);
+                            try {
+                                $grooveCustomer = $consoleCommand->makeRateLimitedRequest(
+                                    GROOVE,
+                                    function () use ($consoleCommand, $grooveMessage) {
+                                        // we need to make a raw curl request because the current version of the
+                                        // Groove/Guzzle API client does not support disabling urlencoding in URL parameters
+                                        // this is apparently a Groove API requirement
+                                        $url = $grooveMessage['links']['author']['href'] . '?access_token=' . config('services.groove.key');
+                                        $jsonData = json_decode(file_get_contents($url), true);
+                                        return $jsonData['customer'];
+                                    });
+                                list($firstName, $lastName) = APIHelper::extractFirstAndLastNameFromFullName($grooveCustomer['name'], $consoleCommand);
+                                $personRef->setFirstName($firstName);
+                                $personRef->setLastName($lastName);
+                            } catch (Exception $e) {
+                                $errorMessage = "Groove customer could not be retrieved for ticket #$grooveTicketNumber \"" . $grooveTicket['summary'] . "\"";
+                                $consoleCommand->error($errorMessage . ": " . $e->getMessage());
+                            }
                         }
                     } else {
                         // person is an agent/user
