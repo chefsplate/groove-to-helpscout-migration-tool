@@ -30,8 +30,8 @@ Ensure mailbox names within HelpScout correspond to the same mailbox names as Gr
 
 ### Within HelpScout
 
-Create all of your agent (team, user & mailbox) accounts in HelpScout first. Our tool will need to map the Groove agent 
-email addresses with HelpScout user emails and Groove mailboxes to HelpScout mailboxes (this step is manual).
+Create all of your agent (team, user & mailbox) accounts in HelpScout first. Please ensure historical users are created as well (at least temporarily for this import. They can be safely deleted afterwards). 
+Our tool will need to map the Groove agent email addresses with HelpScout user emails and Groove mailboxes to HelpScout mailboxes.
 
 ### CLI Usage
 
@@ -117,6 +117,18 @@ Please be aware of the following when importing:
 - HelpScout API can only upload attachments up to 7.6 MB in size, although the API documentation indicates 10 MB is supported. The HelpScout team is aware of this and will address this in the future.
 
 For help moving from Zendesk, Desk or UserVoice, check out the [HelpScout knowledge base](http://docs.helpscout.net/category/74-copying-email-to-help-scout).
+
+#### "No corresponding user found" issues
+
+If you are running into an error where no corresponding user can be found, please ensure a corresponding agent account has been in the system (this can be temporary - it is safe to delete accounts afterwards).
+ 
+If the email belongs to a customer, then you may have stumbled upon a discrepancy between the two systems - customers can leave notes in Groove; only agents/users can leave notes in HelpScout. 
+To work around this, set the `customerEmails` argument on the command:
+
+```
+php artisan sync-tickets --customerEmails=[<comma-separated list of customer emails>] <Groove ticket number> 
+```
+Any email addresses matching the emails listed in customerEmails will be treated as a customer.
 
 ### Dealing with a large number of attachments
 

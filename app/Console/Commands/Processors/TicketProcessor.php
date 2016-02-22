@@ -66,9 +66,23 @@ class TicketProcessor implements ProcessorInterface
             foreach ($grooveMessages['messages'] as $grooveMessage) {
                 $authorEmailAddress = null;
                 try {
+                    list($authorEmailAddress, $addressType) = self::extractEmailAddressFromGrooveLink($grooveMessage['links']['author']['href'], 'author');
+
+                    // only agents/users can create private notes in HelpScout
+                    // this addresses the Groove issue where agents could forward tickets to customers and customers could leave notes
+                    $isPrivateNote = $grooveMessage['note'];
+                    if ($customerEmails = explode(',', $consoleCommand->option('customerEmails'))) {
+                        foreach($customerEmails as $customerEmail) {
+                           if (strcasecmp($customerEmail, $authorEmailAddress) === 0) {
+                               $isPrivateNote = false;
+                               break;
+                           }
+                        }
+                    }
+
                     /* @var $thread AbstractThread */
                     $thread = null;
-                    if ($grooveMessage['note']) {
+                    if ($isPrivateNote) {
                         $thread = new Note();
                         $thread->setType('note');
                     } else {
@@ -93,10 +107,9 @@ class TicketProcessor implements ProcessorInterface
                     // Chat or phone types can be either 'user' or 'customer'
                     // 'user' types require an ID field
                     // 'customer' types require either an ID or email
-                    list($authorEmailAddress, $addressType) = self::extractEmailAddressFromGrooveLink($grooveMessage['links']['author']['href'], 'author');
                     $id = null;
                     $personRef = new PersonRef();
-                    if (strcasecmp($addressType, 'customer') === 0 && !$grooveMessage['note']) {
+                    if (strcasecmp($addressType, 'customer') === 0 && !$isPrivateNote) {
                         /* @var $response Collection */
                         $helpscoutCustomer = $consoleCommand->makeRateLimitedRequest(HELPSCOUT,
                             function () use ($consoleCommand, $authorEmailAddress) {
@@ -136,14 +149,14 @@ class TicketProcessor implements ProcessorInterface
                             throw new ValidationException("No corresponding user found for: $authorEmailAddress (Groove ticket #$grooveTicketNumber)");
                         }
                         // set ID only on notes
-                        if ($grooveMessage['note']) {
+                        if ($isPrivateNote) {
                             $id = $matchingUser->getId();
                         }
                         $personRef->setFirstName($matchingUser->getFirstName());
                         $personRef->setLastName($matchingUser->getLastName());
 
                     }
-                    $personRef->setType($grooveMessage['note'] ? 'user' : 'customer');
+                    $personRef->setType($isPrivateNote ? 'user' : 'customer');
                     $personRef->setEmail($authorEmailAddress);
                     $personRef->setId($id);
                     $thread->setCreatedBy($personRef);
