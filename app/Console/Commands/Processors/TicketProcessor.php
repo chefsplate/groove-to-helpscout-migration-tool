@@ -233,16 +233,17 @@ class TicketProcessor implements ProcessorInterface
             $helpscoutAttachment = new Attachment();
             $helpscoutAttachment->setFileName($fileName);
 
-            $buffer = file_get_contents($grooveAttachment['url']);
-            $finfo = new finfo(FILEINFO_MIME_TYPE);
-            $mimeType = $finfo->buffer($buffer);
-            $helpscoutAttachment->setMimeType($mimeType);
-            $helpscoutAttachment->setData($buffer);
-
-            if (intval($grooveAttachment['size']) > 10485760) {
-                $consoleCommand->warn("Warning: Maximum file size supported by HelpScout is 10 MB (10485760 bytes). File size for $fileName is $fileSize bytes.");
-            }
             try {
+                $buffer = file_get_contents($grooveAttachment['url']);
+                $finfo = new finfo(FILEINFO_MIME_TYPE);
+                $mimeType = $finfo->buffer($buffer);
+                $helpscoutAttachment->setMimeType($mimeType);
+                $helpscoutAttachment->setData($buffer);
+
+                if (intval($grooveAttachment['size']) > 10485760) {
+                    $consoleCommand->warn("Warning: Maximum file size supported by HelpScout is 10 MB (10485760 bytes). File size for $fileName is $fileSize bytes.");
+                }
+
                 $consoleCommand->makeRateLimitedRequest(GROOVE, function () use ($consoleCommand, $helpscoutAttachment) {
                     $consoleCommand->getHelpScoutClient()->createAttachment($helpscoutAttachment);
                 });
@@ -250,7 +251,7 @@ class TicketProcessor implements ProcessorInterface
                 // hash should be programmatically be set now
                 $helpscoutAttachment->setData(null);
 
-                $helpscoutAttachments []= $helpscoutAttachment;
+                $helpscoutAttachments [] = $helpscoutAttachment;
             } catch (\Exception $e) {
                 $consoleCommand->error("Failed to create HelpScout attachment for $fileName: " . $e->getMessage());
 
