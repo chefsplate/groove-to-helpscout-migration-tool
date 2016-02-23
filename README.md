@@ -78,7 +78,14 @@ You can bypass the duplication check (e.g. on the initial import) by specifying:
 php artisan sync-tickets --checkDuplicates=false 
 ```
 
-For both commands, you can also specify `--help` to read additional details.  
+#### Viewing tickets
+
+If for whatever reason a ticket fails to sync, you can display Groove information about it with the `view-ticket` command:
+```
+php artisan view-ticket <Groove ticket number> 
+```
+
+For all commands, you can also specify `--help` to read additional details.  
 
 ## Notes
 
@@ -120,15 +127,27 @@ For help moving from Zendesk, Desk or UserVoice, check out the [HelpScout knowle
 
 #### "No corresponding user found" issues
 
-If you are running into an error where no corresponding user can be found, please ensure a corresponding agent account has been in the system (this can be temporary - it is safe to delete accounts afterwards).
+If you are running into an error where no corresponding user can be found, please ensure an agent account has been created in HelpScout that matches the email address in question 
+(these accounts need to be temporarily created for the migration; it is safe to delete accounts afterwards - please see the next section below).
  
-If the email belongs to a customer, then you may have stumbled upon a discrepancy between the two systems - customers can leave notes in Groove; only agents/users can leave notes in HelpScout. 
-To work around this, set the `customerEmails` argument on the command:
+If the email belongs to a customer, then you may have stumbled upon a discrepancy between the two systems - customers can leave notes in Groove; however, only agents/users can leave notes in HelpScout. 
+To work around this, set the `customerEmails` option parameter on the `sync-tickets` command:
 
 ```
 php artisan sync-tickets --customerEmails=[<comma-separated list of customer emails>] <Groove ticket number> 
 ```
 Any email addresses matching the emails listed in customerEmails will be treated as a customer.
+
+##### Deleting temporary users
+
+It is safe to delete a user that was created for the purposes of the migration. 
+As described from HelpScout support, once a user is deleted: 
+
+- All previous replies and notes added to conversations remain in place.
+- Reporting is not affected in any way.
+- Any workflows created by that User will not be affected.
+- Conversations that are assigned to the User will automatically become unassigned.
+- Status values will not changed for any conversations that the User has touched.
 
 ### Dealing with a large number of attachments
 
