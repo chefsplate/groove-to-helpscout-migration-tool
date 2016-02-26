@@ -16,7 +16,7 @@ class SyncTickets extends SyncCommandBase
      * @var string
      */
     protected $signature = 'sync-tickets
-                            {--startPage=1 : The starting page } {--stopPage=9999 : The last page to fetch } {--customerEmails=null : A comma-seperated list of customer emails, any email listed will be treated as a customer. This addresses a discrepancy where a Groove customer can leave a private note } {--checkDuplicates=true : Check whether each ticket has already been uploaded to HelpScout. If so, then don\'t upload a new one. } {tickets? : (Optional) Comma-separated list (no spaces) of specific Groove ticket numbers for syncing. Useful for resuming failed uploads.}';
+                            {--startPage=1 : The starting page } {--stopPage=9999 : The last page to fetch } {--bypassValidation : Skip initial validation checks. Please be careful!} {--customerEmails=null : A comma-seperated list of customer emails, any email listed will be treated as a customer. This addresses a discrepancy where a Groove customer can leave a private note } {--checkDuplicates=true : Check whether each ticket has already been uploaded to HelpScout. If so, then don\'t upload a new one. } {tickets? : (Optional) Comma-separated list (no spaces) of specific Groove ticket numbers for syncing. Useful for resuming failed uploads.}';
 
     /**
      * The console command description.
@@ -50,8 +50,10 @@ class SyncTickets extends SyncCommandBase
 
         $this->info("[START] Starting sync of Groove tickets and messages at " . date('c'));
 
-        // Initial validation
-        $this->performInitialValidation();
+        if (!$this->option('bypassValidation')) {
+            // Initial validation
+            $this->performInitialValidation();
+        }
 
         // Acquire and process
         // -------------------

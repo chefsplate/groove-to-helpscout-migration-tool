@@ -78,6 +78,13 @@ You can bypass the duplication check (e.g. on the initial import) by specifying:
 php artisan sync-tickets --checkDuplicates=false 
 ```
 
+Finally, if there are any issues with the initial validation, or you want to ignore these messages, 
+you can do so at your own risk by invoking:
+
+```
+php artisan sync-tickets --bypassValidation
+```
+
 #### Viewing tickets
 
 If for whatever reason a ticket fails to sync, you can display Groove information about it with the `view-ticket` command:
