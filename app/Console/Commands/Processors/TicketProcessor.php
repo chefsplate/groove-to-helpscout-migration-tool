@@ -196,7 +196,7 @@ class TicketProcessor implements ProcessorInterface
     private static function extractEmailAddressFromGrooveLink($grooveLink, $personType)
     {
         $matches = array();
-        if (preg_match('@^https://api.groovehq.com/v1/customers/(.*)@i',
+        if (preg_match('@^https?://api.groovehq.com/v1/customers/(.*)@i',
                 $grooveLink, $matches) === 1
         ) {
             return array($matches[1], 'customer');
@@ -368,7 +368,7 @@ class TicketProcessor implements ProcessorInterface
 
                     // CustomerRef
                     $matches = array();
-                    if (isset($grooveTicket['links']['customer']) && preg_match('@^https://api.groovehq.com/v1/customers/(.*)@i',
+                    if (isset($grooveTicket['links']['customer']) && preg_match('@^https?://api.groovehq.com/v1/customers/(.*)@i',
                             $grooveTicket['links']['customer']['href'], $matches) === 1
                     ) {
                         $customerEmail = $matches[1];
