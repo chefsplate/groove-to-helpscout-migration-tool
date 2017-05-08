@@ -168,8 +168,12 @@ class TicketProcessor implements ProcessorInterface
                     $thread->setCreatedBy($personRef);
 
                     // Set assigned Agent
-                    $ownerRef = self::agentPersonRef($grooveTicket['links']['assignee']['href'], 'agent');
-                    $thread->setAssignedTo($ownerRef);
+                    if (isset($grooveMessage['links']['assignee'])) {
+                      $ownerRef = self::agentPersonRef($grooveTicket['links']['assignee']['href'], 'agent');
+                      if ($ownerRef) {
+                        $thread->setAssignedTo($ownerRef);
+                      }
+                    }
 
                     // To field
                     if (isset($grooveMessage['links']['recipient'])) {
