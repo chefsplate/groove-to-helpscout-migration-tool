@@ -18,6 +18,7 @@ use HelpScout\model\SearchConversation;
 use HelpScout\model\thread\AbstractThread;
 use HelpScout\model\thread\Customer;
 use HelpScout\model\thread\Note;
+use HelpScout\model\thread\Message;
 
 /**
  * Created by PhpStorm.
@@ -71,6 +72,7 @@ class TicketProcessor implements ProcessorInterface
                     // only agents/users can create private notes in HelpScout
                     // this addresses the Groove issue where agents could forward tickets to customers and customers could leave notes
                     $isPrivateNote = $grooveMessage['note'];
+                    $isAgentResponse = $grooveMessage['agent_response'];
                     if ($customerEmails = explode(',', $consoleCommand->option('customerEmails'))) {
                         foreach($customerEmails as $customerEmail) {
                            if (strcasecmp($customerEmail, $authorEmailAddress) === 0) {
@@ -85,6 +87,10 @@ class TicketProcessor implements ProcessorInterface
                     if ($isPrivateNote) {
                         $thread = new Note();
                         $thread->setType('note');
+                    }
+                    elseif($isAgentResponse) {
+                      $thread = new Message();
+                      $thread->setType('message');
                     } else {
                         $thread = new Customer();
                         $thread->setType('customer');
@@ -109,7 +115,7 @@ class TicketProcessor implements ProcessorInterface
                     // 'customer' types require either an ID or email
                     $id = null;
                     $personRef = new PersonRef();
-                    if (strcasecmp($addressType, 'customer') === 0 && !$isPrivateNote) {
+                    if (strcasecmp($addressType, 'customer') === 0 && !$isPrivateNote && !$isAgentResponse) {
                         /* @var $response Collection */
                         $helpscoutCustomer = $consoleCommand->makeRateLimitedRequest(HELPSCOUT,
                             function () use ($consoleCommand, $authorEmailAddress) {
@@ -137,6 +143,7 @@ class TicketProcessor implements ProcessorInterface
                                 list($firstName, $lastName) = APIHelper::extractFirstAndLastNameFromFullName($grooveCustomer['name'], $consoleCommand);
                                 $personRef->setFirstName($firstName);
                                 $personRef->setLastName($lastName);
+
                             } catch (Exception $e) {
                                 $errorMessage = "Groove customer could not be retrieved for ticket #$grooveTicketNumber \"" . $grooveTicket['summary'] . "\"";
                                 $consoleCommand->error($errorMessage . ": " . $e->getMessage());
@@ -149,17 +156,24 @@ class TicketProcessor implements ProcessorInterface
                             throw new ValidationException("No corresponding user found for: $authorEmailAddress (Groove ticket #$grooveTicketNumber)");
                         }
                         // set ID only on notes
-                        if ($isPrivateNote) {
+                        if ($isPrivateNote || $isAgentResponse) {
                             $id = $matchingUser->getId();
                         }
                         $personRef->setFirstName($matchingUser->getFirstName());
                         $personRef->setLastName($matchingUser->getLastName());
-
                     }
-                    $personRef->setType($isPrivateNote ? 'user' : 'customer');
+                    $personRef->setType( ($isPrivateNote || $isAgentResponse) ? 'user' : 'customer');
                     $personRef->setEmail($authorEmailAddress);
                     $personRef->setId($id);
                     $thread->setCreatedBy($personRef);
+
+                    // Set assigned Agent
+                    if (isset($grooveMessage['links']['assignee'])) {
+                      $ownerRef = self::agentPersonRef($grooveTicket['links']['assignee']['href'], 'agent');
+                      if ($ownerRef) {
+                        $thread->setAssignedTo($ownerRef);
+                      }
+                    }
 
                     // To field
                     if (isset($grooveMessage['links']['recipient'])) {
@@ -196,7 +210,7 @@ class TicketProcessor implements ProcessorInterface
     private static function extractEmailAddressFromGrooveLink($grooveLink, $personType)
     {
         $matches = array();
-        if (preg_match('@^https://api.groovehq.com/v1/customers/(.*)@i',
+        if (preg_match('@^https?://api.groovehq.com/v1/customers/(.*)@i',
                 $grooveLink, $matches) === 1
         ) {
             return array($matches[1], 'customer');
@@ -206,6 +220,31 @@ class TicketProcessor implements ProcessorInterface
             return array($matches[1], 'agent');
         }
         throw new ApiException("No $personType defined for Groove link: " . $grooveLink);
+    }
+
+    /**
+     * @param $grooveLink
+     * @param $personType
+     * @return PersonRef
+     * @throws ValidationException
+     */
+    private static function agentPersonRef($grooveLink, $personType)
+    {
+
+      $agentRef = new PersonRef();
+      list($ownerEmailAddress, $addressType) = self::extractEmailAddressFromGrooveLink($grooveLink, $personType);
+      $matchingUser = APIHelper::findMatchingUserWithEmail($ownerEmailAddress);
+      if (!$matchingUser) {
+          throw new ValidationException("No corresponding assignee found for: $ownerEmailAddress");
+      }
+
+      $id = $matchingUser->getId();
+
+      $agentRef->setId($id);
+      $agentRef->setType('user');
+      $agentRef->setEmail($ownerEmailAddress);
+      return $agentRef;
+
     }
 
     /**
@@ -368,7 +407,7 @@ class TicketProcessor implements ProcessorInterface
 
                     // CustomerRef
                     $matches = array();
-                    if (isset($grooveTicket['links']['customer']) && preg_match('@^https://api.groovehq.com/v1/customers/(.*)@i',
+                    if (isset($grooveTicket['links']['customer']) && preg_match('@^https?://api.groovehq.com/v1/customers/(.*)@i',
                             $grooveTicket['links']['customer']['href'], $matches) === 1
                     ) {
                         $customerEmail = $matches[1];
