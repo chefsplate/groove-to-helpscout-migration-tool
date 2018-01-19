@@ -214,7 +214,7 @@ class TicketProcessor implements ProcessorInterface
                 $grooveLink, $matches) === 1
         ) {
             return array($matches[1], 'customer');
-        } elseif (preg_match('@^https://api.groovehq.com/v1/agents/(.*)@i',
+        } elseif (preg_match('@^https?://api.groovehq.com/v1/agents/(.*)@i',
                 $grooveLink, $matches) === 1
         ) {
             return array($matches[1], 'agent');
