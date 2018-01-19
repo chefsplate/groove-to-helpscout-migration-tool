@@ -268,7 +268,7 @@ class TicketProcessor implements ProcessorInterface
         $matches = array();
         $helpscoutAttachments = array();
         $failedAttachments = array();
-        if (preg_match('@^https://api.groovehq.com/v1/attachments\?message=(.*)@i',
+        if (preg_match('@^https?://api.groovehq.com/v1/attachments\?message=(.*)@i',
                 $grooveMessage['links']['attachments']['href'], $matches) === 1
         ) {
             $grooveMessageId = $matches[1];
